@@ -26,7 +26,7 @@ const SORT_OPTIONS: { key: CommentSortOption; label: string; icon: string }[] =
 interface CommentListProps {
   postId: string;
   comments: Comment[];
-  huggedComments: Set<string>;
+  userId?: string;
   onHugComment: (commentId: string) => void;
   onCommentsChange: (comments: Comment[]) => void;
 }
@@ -34,7 +34,7 @@ interface CommentListProps {
 export const CommentList: React.FC<CommentListProps> = ({
   postId,
   comments,
-  huggedComments,
+  userId,
   onHugComment,
   onCommentsChange,
 }) => {
@@ -50,7 +50,7 @@ export const CommentList: React.FC<CommentListProps> = ({
     setIsLoading(true);
 
     try {
-      const sortedComments = await getCommentsByPost(postId, newSort);
+      const sortedComments = await getCommentsByPost(postId, newSort, userId);
       onCommentsChange(sortedComments);
     } catch (error) {
       console.error("Yorumlar yüklenemedi:", error);
@@ -126,7 +126,7 @@ export const CommentList: React.FC<CommentListProps> = ({
           <CommentCard
             key={comment.id}
             comment={comment}
-            isHugged={huggedComments.has(comment.id)}
+            isHugged={comment.isHugged}
             onHug={() => onHugComment(comment.id)}
           />
         ))

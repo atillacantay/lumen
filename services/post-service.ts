@@ -37,7 +37,29 @@ export interface GetPostsResponse {
   lastDoc: DocumentSnapshot | null;
 }
 
-const convertToPost = (docSnap: DocumentSnapshot): Post => {
+// Get all post IDs that user has hugged - single query instead of N queries
+const getUserHuggedPostIds = async (userId?: string): Promise<Set<string>> => {
+  if (!userId) return new Set();
+
+  const q = query(
+    collection(db, HUGS_COLLECTION),
+    where("userId", "==", userId),
+    where("targetType", "==", "post")
+  );
+
+  const snapshot = await getDocs(q);
+  return new Set(snapshot.docs.map((doc) => doc.data().targetId));
+};
+
+// Filter hugged posts from a set of post IDs
+const filterHuggedPosts = (
+  postIds: string[],
+  userHuggedIds: Set<string>
+): Set<string> => {
+  return new Set(postIds.filter((id) => userHuggedIds.has(id)));
+};
+
+const convertToPost = (docSnap: DocumentSnapshot, isHugged = false): Post => {
   const data = docSnap.data()!;
   return {
     id: docSnap.id,
@@ -49,6 +71,7 @@ const convertToPost = (docSnap: DocumentSnapshot): Post => {
     imageUrl: data.imageUrl,
     hugsCount: data.hugsCount || 0,
     commentsCount: data.commentsCount || 0,
+    isHugged,
     createdAt: data.createdAt?.toDate() || new Date(),
     updatedAt: data.updatedAt?.toDate() || new Date(),
   };
@@ -95,7 +118,8 @@ export const getPosts = async (
   lastDoc?: DocumentSnapshot | null,
   categoryId?: string,
   sortBy: SortOption = "newest",
-  pageSize: number = PAGE_SIZE
+  pageSize: number = PAGE_SIZE,
+  userId?: string
 ): Promise<GetPostsResponse> => {
   const sortField = SORT_FIELDS[sortBy];
 
@@ -119,31 +143,53 @@ export const getPosts = async (
   }
 
   const snapshot = await getDocs(q);
-  const posts = snapshot.docs.map(convertToPost);
+  const postIds = snapshot.docs.map((d) => d.id);
+
+  // Get user's hugged posts in single query, then filter
+  const userHuggedIds = await getUserHuggedPostIds(userId);
+  const huggedSet = filterHuggedPosts(postIds, userHuggedIds);
+
+  const posts = snapshot.docs.map((docSnap) =>
+    convertToPost(docSnap, huggedSet.has(docSnap.id))
+  );
   const newLastDoc = snapshot.docs[snapshot.docs.length - 1] || null;
 
   return { posts, lastDoc: newLastDoc };
 };
 
-export const getPostById = async (postId: string): Promise<Post | null> => {
+export const getPostById = async (
+  postId: string,
+  userId?: string
+): Promise<Post | null> => {
   const docRef = doc(db, POSTS_COLLECTION, postId);
   const docSnap = await getDoc(docRef);
 
   if (docSnap.exists()) {
-    return convertToPost(docSnap);
+    const userHuggedIds = await getUserHuggedPostIds(userId);
+    return convertToPost(docSnap, userHuggedIds.has(postId));
   }
   return null;
 };
 
-export const getPostsByUser = async (userId: string): Promise<Post[]> => {
+export const getPostsByUser = async (
+  authorId: string,
+  currentUserId?: string
+): Promise<Post[]> => {
   const q = query(
     collection(db, POSTS_COLLECTION),
-    where("authorId", "==", userId),
+    where("authorId", "==", authorId),
     orderBy("createdAt", "desc")
   );
 
   const snapshot = await getDocs(q);
-  return snapshot.docs.map(convertToPost);
+  const postIds = snapshot.docs.map((d) => d.id);
+
+  const userHuggedIds = await getUserHuggedPostIds(currentUserId);
+  const huggedSet = filterHuggedPosts(postIds, userHuggedIds);
+
+  return snapshot.docs.map((docSnap) =>
+    convertToPost(docSnap, huggedSet.has(docSnap.id))
+  );
 };
 
 export const toggleHug = async (

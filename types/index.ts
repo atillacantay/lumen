@@ -8,6 +8,7 @@ export interface Post {
   imageUrl?: string;
   hugsCount: number;
   commentsCount: number;
+  isHugged?: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -19,6 +20,7 @@ export interface Comment {
   authorId: string;
   authorName: string;
   hugsCount: number;
+  isHugged?: boolean;
   createdAt: Date;
 }
 

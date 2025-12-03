@@ -1,6 +1,7 @@
 import { BorderRadius, Colors, FontSize, Spacing } from "@/constants/theme";
 import { useCategories } from "@/context/CategoryContext";
 import { Post } from "@/types";
+import { Ionicons } from "@expo/vector-icons";
 import { formatDistanceToNow } from "date-fns";
 import { tr } from "date-fns/locale";
 import React from "react";
@@ -17,14 +18,14 @@ interface PostCardProps {
   post: Post;
   onPress?: () => void;
   onHug?: () => void;
-  isHugged?: boolean;
+  showCategory?: boolean;
 }
 
 export const PostCard: React.FC<PostCardProps> = ({
   post,
   onPress,
   onHug,
-  isHugged = false,
+  showCategory = true,
 }) => {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? "light"];
@@ -39,94 +40,77 @@ export const PostCard: React.FC<PostCardProps> = ({
   return (
     <TouchableOpacity
       onPress={onPress}
-      activeOpacity={0.9}
-      style={[
-        styles.card,
-        {
-          backgroundColor: colors.surface,
-          shadowColor: colors.cardShadow,
-        },
-      ]}
+      activeOpacity={0.7}
+      style={[styles.card, { backgroundColor: colors.surface }]}
     >
-      {/* Header */}
-      <View style={styles.header}>
-        <View style={styles.authorInfo}>
-          <View
-            style={[
-              styles.avatar,
-              { backgroundColor: category?.color || colors.primary },
-            ]}
-          >
-            <Text style={styles.avatarText}>
-              {post.authorName.charAt(0).toUpperCase()}
-            </Text>
-          </View>
-          <View>
-            <Text style={[styles.authorName, { color: colors.text }]}>
-              {post.authorName}
-            </Text>
-            <Text style={[styles.timeAgo, { color: colors.textMuted }]}>
-              {timeAgo}
-            </Text>
-          </View>
-        </View>
-        {category && (
+      {/* Header - Category & Date */}
+      {showCategory && (
+        <View style={styles.header}>
           <View
             style={[
               styles.categoryBadge,
-              { backgroundColor: category.color + "20" },
+              { backgroundColor: category?.color || colors.primary },
             ]}
           >
-            <Text style={styles.categoryIcon}>{category.emoji}</Text>
-            <Text style={[styles.categoryName, { color: category.color }]}>
-              {category.name}
-            </Text>
+            <Text style={styles.categoryEmoji}>{category?.emoji || "💭"}</Text>
+            <Text style={styles.categoryName}>{category?.name || "Diğer"}</Text>
           </View>
-        )}
-      </View>
+          <Text style={[styles.date, { color: colors.textMuted }]}>
+            {timeAgo}
+          </Text>
+        </View>
+      )}
 
-      {/* Content */}
+      {/* Title & Content */}
       <Text style={[styles.title, { color: colors.text }]} numberOfLines={2}>
         {post.title}
       </Text>
       <Text
         style={[styles.content, { color: colors.textSecondary }]}
-        numberOfLines={3}
+        numberOfLines={2}
       >
         {post.content}
       </Text>
 
       {/* Image */}
       {post.imageUrl && (
-        <Image source={{ uri: post.imageUrl }} style={styles.image} />
+        <Image
+          source={{ uri: post.imageUrl }}
+          style={styles.image}
+          resizeMode="cover"
+        />
       )}
 
       {/* Footer */}
       <View style={styles.footer}>
-        <TouchableOpacity
-          onPress={onHug}
-          style={[
-            styles.hugButton,
-            {
-              backgroundColor: isHugged ? colors.hug + "20" : "transparent",
-            },
-          ]}
-        >
-          <Text style={styles.hugEmoji}>{isHugged ? "🤗" : "🫂"}</Text>
-          <Text
+        <Text style={[styles.meta, { color: colors.textMuted }]}>
+          {post.authorName}
+          {!showCategory && ` • ${timeAgo}`}
+        </Text>
+        <View style={styles.stats}>
+          <TouchableOpacity
+            onPress={onHug}
             style={[
-              styles.hugCount,
-              { color: isHugged ? colors.hug : colors.textSecondary },
+              styles.hugButton,
+              {
+                backgroundColor: post.isHugged
+                  ? colors.hug + "20"
+                  : "transparent",
+              },
             ]}
           >
-            {post.hugsCount} sarıldı
+            <Text style={styles.hugEmoji}>{post.isHugged ? "🤗" : "🫂"}</Text>
+          </TouchableOpacity>
+          <Text style={[styles.statText, { color: colors.textMuted }]}>
+            {post.hugsCount}
           </Text>
-        </TouchableOpacity>
-
-        <View style={styles.commentInfo}>
-          <Text style={styles.commentEmoji}>💬</Text>
-          <Text style={[styles.commentCount, { color: colors.textSecondary }]}>
-            {post.commentsCount} yorum
+          <Ionicons
+            name="chatbubble-outline"
+            size={14}
+            color={colors.textMuted}
+          />
+          <Text style={[styles.statText, { color: colors.textMuted }]}>
+            {post.commentsCount}
           </Text>
         </View>
       </View>
@@ -136,109 +120,72 @@ export const PostCard: React.FC<PostCardProps> = ({
 
 const styles = StyleSheet.create({
   card: {
-    borderRadius: BorderRadius.lg,
     padding: Spacing.md,
-    marginHorizontal: Spacing.md,
-    marginVertical: Spacing.sm,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 3,
+    borderRadius: BorderRadius.lg,
+    marginBottom: Spacing.sm,
   },
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: Spacing.md,
-  },
-  authorInfo: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  avatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: "center",
-    alignItems: "center",
-    marginRight: Spacing.sm,
-  },
-  avatarText: {
-    color: "#FFFFFF",
-    fontSize: FontSize.md,
-    fontWeight: "bold",
-  },
-  authorName: {
-    fontSize: FontSize.sm,
-    fontWeight: "600",
-  },
-  timeAgo: {
-    fontSize: FontSize.xs,
-    marginTop: 2,
+    marginBottom: Spacing.sm,
   },
   categoryBadge: {
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: Spacing.sm,
-    paddingVertical: Spacing.xs,
+    paddingVertical: 4,
     borderRadius: BorderRadius.full,
+    gap: 4,
   },
-  categoryIcon: {
+  categoryEmoji: {
     fontSize: 12,
-    marginRight: 4,
   },
   categoryName: {
+    fontSize: 11,
+    fontWeight: "600",
+    color: "#FFF",
+  },
+  date: {
     fontSize: FontSize.xs,
-    fontWeight: "500",
   },
   title: {
-    fontSize: FontSize.lg,
-    fontWeight: "bold",
-    marginBottom: Spacing.sm,
+    fontSize: FontSize.md,
+    fontWeight: "600",
+    marginBottom: Spacing.xs,
   },
   content: {
-    fontSize: FontSize.md,
-    lineHeight: 22,
+    fontSize: FontSize.sm,
+    lineHeight: 20,
+    marginBottom: Spacing.sm,
   },
   image: {
     width: "100%",
-    height: 200,
+    height: 180,
     borderRadius: BorderRadius.md,
-    marginTop: Spacing.md,
+    marginBottom: Spacing.sm,
   },
   footer: {
     flexDirection: "row",
+    justifyContent: "space-between",
     alignItems: "center",
-    marginTop: Spacing.md,
-    paddingTop: Spacing.md,
-    borderTopWidth: 1,
-    borderTopColor: "#E9ECEF",
+  },
+  meta: {
+    fontSize: FontSize.xs,
+  },
+  stats: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  statText: {
+    fontSize: FontSize.xs,
   },
   hugButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm,
-    borderRadius: BorderRadius.full,
-    marginRight: Spacing.md,
+    padding: 4,
+    borderRadius: BorderRadius.sm,
   },
   hugEmoji: {
-    fontSize: 18,
-    marginRight: Spacing.xs,
-  },
-  hugCount: {
-    fontSize: FontSize.sm,
-    fontWeight: "500",
-  },
-  commentInfo: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  commentEmoji: {
-    fontSize: 16,
-    marginRight: Spacing.xs,
-  },
-  commentCount: {
     fontSize: FontSize.sm,
   },
 });

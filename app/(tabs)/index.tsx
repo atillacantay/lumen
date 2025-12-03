@@ -1,13 +1,11 @@
+import { PostCard } from "@/components/PostCard";
 import { PostSkeleton } from "@/components/skeletons";
 import { BorderRadius, Colors, FontSize, Spacing } from "@/constants/theme";
-import { useCategories } from "@/context/CategoryContext";
 import { useUser } from "@/context/UserContext";
 import { useColorScheme } from "@/hooks/use-color-scheme";
-import { getPosts, SortOption } from "@/services/post-service";
+import { getPosts, SortOption, toggleHug } from "@/services/post-service";
 import { Post } from "@/types";
 import { Ionicons } from "@expo/vector-icons";
-import { formatDistanceToNow } from "date-fns";
-import { tr } from "date-fns/locale";
 import { useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
@@ -29,8 +27,7 @@ export default function HomeScreen() {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? "light"];
   const router = useRouter();
-  const { isLoading: userLoading } = useUser();
-  const { getCategoryById } = useCategories();
+  const { user, isLoading: userLoading } = useUser();
 
   const [posts, setPosts] = useState<Post[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -42,7 +39,13 @@ export default function HomeScreen() {
     const fetchPosts = async () => {
       setIsLoading(true);
       try {
-        const result = await getPosts(undefined, undefined, sortBy);
+        const result = await getPosts(
+          undefined,
+          undefined,
+          sortBy,
+          undefined,
+          user?.id
+        );
         setPosts(result.posts);
       } catch (error) {
         console.error("Failed to load posts:", error);
@@ -52,12 +55,18 @@ export default function HomeScreen() {
     };
 
     fetchPosts();
-  }, [sortBy]);
+  }, [sortBy, user?.id]);
 
   const onRefresh = async () => {
     setRefreshing(true);
     try {
-      const result = await getPosts(undefined, undefined, sortBy);
+      const result = await getPosts(
+        undefined,
+        undefined,
+        sortBy,
+        undefined,
+        user?.id
+      );
       setPosts(result.posts);
     } catch (error) {
       console.error("Refresh error:", error);
@@ -66,11 +75,24 @@ export default function HomeScreen() {
     }
   };
 
-  const formatDate = (date: Date) => {
+  const handleHug = async (postId: string) => {
+    if (!user) return;
+
     try {
-      return formatDistanceToNow(date, { addSuffix: true, locale: tr });
-    } catch {
-      return "";
+      const nowHugged = await toggleHug(postId, user.id);
+      setPosts((prev) =>
+        prev.map((p) =>
+          p.id === postId
+            ? {
+                ...p,
+                isHugged: nowHugged,
+                hugsCount: p.hugsCount + (nowHugged ? 1 : -1),
+              }
+            : p
+        )
+      );
+    } catch (error) {
+      console.error("Hug error:", error);
     }
   };
 
@@ -163,71 +185,13 @@ export default function HomeScreen() {
             tintColor={colors.primary}
           />
         }
-        renderItem={({ item }) => {
-          const category = getCategoryById(item.categoryId);
-          return (
-            <TouchableOpacity
-              style={[styles.postCard, { backgroundColor: colors.surface }]}
-              onPress={() => router.push(`/post/${item.id}` as any)}
-              activeOpacity={0.7}
-            >
-              {/* Category & Date */}
-              <View style={styles.postHeader}>
-                <View
-                  style={[
-                    styles.categoryBadge,
-                    { backgroundColor: category?.color || colors.primary },
-                  ]}
-                >
-                  <Text style={styles.categoryEmoji}>
-                    {category?.emoji || "💭"}
-                  </Text>
-                  <Text style={styles.categoryName}>
-                    {category?.name || "Diğer"}
-                  </Text>
-                </View>
-                <Text style={[styles.postDate, { color: colors.textMuted }]}>
-                  {formatDate(item.createdAt)}
-                </Text>
-              </View>
-
-              {/* Title & Content */}
-              <Text
-                style={[styles.postTitle, { color: colors.text }]}
-                numberOfLines={2}
-              >
-                {item.title}
-              </Text>
-              <Text
-                style={[styles.postContent, { color: colors.textSecondary }]}
-                numberOfLines={2}
-              >
-                {item.content}
-              </Text>
-
-              {/* Footer */}
-              <View style={styles.postFooter}>
-                <Text style={[styles.authorName, { color: colors.textMuted }]}>
-                  {item.authorName}
-                </Text>
-                <View style={styles.postStats}>
-                  <Ionicons name="heart" size={14} color={colors.hug} />
-                  <Text style={[styles.statText, { color: colors.textMuted }]}>
-                    {item.hugsCount}
-                  </Text>
-                  <Ionicons
-                    name="chatbubble-outline"
-                    size={14}
-                    color={colors.textMuted}
-                  />
-                  <Text style={[styles.statText, { color: colors.textMuted }]}>
-                    {item.commentsCount}
-                  </Text>
-                </View>
-              </View>
-            </TouchableOpacity>
-          );
-        }}
+        renderItem={({ item }) => (
+          <PostCard
+            post={item}
+            onPress={() => router.push(`/post/${item.id}`)}
+            onHug={() => handleHug(item.id)}
+          />
+        )}
         ListEmptyComponent={() => (
           <View style={styles.emptyContainer}>
             <Text style={styles.emptyIcon}>🌙</Text>
@@ -301,62 +265,7 @@ const styles = StyleSheet.create({
   listContent: {
     padding: Spacing.md,
   },
-  postCard: {
-    padding: Spacing.md,
-    borderRadius: BorderRadius.lg,
-    marginBottom: Spacing.sm,
-  },
-  postHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: Spacing.sm,
-  },
-  categoryBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: Spacing.sm,
-    paddingVertical: 4,
-    borderRadius: BorderRadius.full,
-    gap: 4,
-  },
-  categoryEmoji: {
-    fontSize: 12,
-  },
-  categoryName: {
-    fontSize: 11,
-    fontWeight: "600",
-    color: "#FFF",
-  },
-  postDate: {
-    fontSize: FontSize.xs,
-  },
-  postTitle: {
-    fontSize: FontSize.md,
-    fontWeight: "600",
-    marginBottom: Spacing.xs,
-  },
-  postContent: {
-    fontSize: FontSize.sm,
-    lineHeight: 20,
-    marginBottom: Spacing.sm,
-  },
-  postFooter: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  authorName: {
-    fontSize: FontSize.xs,
-  },
-  postStats: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-  },
-  statText: {
-    fontSize: FontSize.xs,
-  },
+  // Empty State
   emptyContainer: {
     alignItems: "center",
     paddingVertical: Spacing.xxl,

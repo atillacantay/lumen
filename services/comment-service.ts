@@ -28,7 +28,10 @@ export interface CreateCommentInput {
   authorName: string;
 }
 
-const convertToComment = (docSnap: DocumentSnapshot): Comment => {
+const convertToComment = (
+  docSnap: DocumentSnapshot,
+  isHugged = false
+): Comment => {
   const data = docSnap.data()!;
   return {
     id: docSnap.id,
@@ -37,8 +40,33 @@ const convertToComment = (docSnap: DocumentSnapshot): Comment => {
     authorId: data.authorId,
     authorName: data.authorName,
     hugsCount: data.hugsCount || 0,
+    isHugged,
     createdAt: data.createdAt?.toDate() || new Date(),
   };
+};
+
+// Get all comment IDs that user has hugged - single query instead of N queries
+const getUserHuggedCommentIds = async (
+  userId?: string
+): Promise<Set<string>> => {
+  if (!userId) return new Set();
+
+  const q = query(
+    collection(db, COMMENT_HUGS_COLLECTION),
+    where("userId", "==", userId),
+    where("targetType", "==", "comment")
+  );
+
+  const snapshot = await getDocs(q);
+  return new Set(snapshot.docs.map((doc) => doc.data().targetId));
+};
+
+// Filter hugged comments from a set of comment IDs
+const filterHuggedComments = (
+  commentIds: string[],
+  userHuggedIds: Set<string>
+): Set<string> => {
+  return new Set(commentIds.filter((id) => userHuggedIds.has(id)));
 };
 
 export const createComment = async (
@@ -82,7 +110,8 @@ const COMMENT_SORT_CONFIG: Record<
 
 export const getCommentsByPost = async (
   postId: string,
-  sortBy: CommentSortOption = "oldest"
+  sortBy: CommentSortOption = "oldest",
+  userId?: string
 ): Promise<Comment[]> => {
   const { field, direction } = COMMENT_SORT_CONFIG[sortBy];
 
@@ -93,18 +122,35 @@ export const getCommentsByPost = async (
   );
 
   const snapshot = await getDocs(q);
-  return snapshot.docs.map(convertToComment);
+  const commentIds = snapshot.docs.map((d) => d.id);
+
+  const userHuggedIds = await getUserHuggedCommentIds(userId);
+  const huggedSet = filterHuggedComments(commentIds, userHuggedIds);
+
+  return snapshot.docs.map((docSnap) =>
+    convertToComment(docSnap, huggedSet.has(docSnap.id))
+  );
 };
 
-export const getCommentsByUser = async (userId: string): Promise<Comment[]> => {
+export const getCommentsByUser = async (
+  authorId: string,
+  currentUserId?: string
+): Promise<Comment[]> => {
   const q = query(
     collection(db, COMMENTS_COLLECTION),
-    where("authorId", "==", userId),
+    where("authorId", "==", authorId),
     orderBy("createdAt", "desc")
   );
 
   const snapshot = await getDocs(q);
-  return snapshot.docs.map(convertToComment);
+  const commentIds = snapshot.docs.map((d) => d.id);
+
+  const userHuggedIds = await getUserHuggedCommentIds(currentUserId);
+  const huggedSet = filterHuggedComments(commentIds, userHuggedIds);
+
+  return snapshot.docs.map((docSnap) =>
+    convertToComment(docSnap, huggedSet.has(docSnap.id))
+  );
 };
 
 export const toggleCommentHug = async (

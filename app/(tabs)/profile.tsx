@@ -62,8 +62,8 @@ export default function ProfileScreen() {
     const fetchData = async () => {
       try {
         const [userPosts, userComments] = await Promise.all([
-          getPostsByUser(user.id),
-          getCommentsByUser(user.id),
+          getPostsByUser(user.id, user.id),
+          getCommentsByUser(user.id, user.id),
         ]);
         setPosts(userPosts);
         setComments(userComments);
@@ -82,8 +82,8 @@ export default function ProfileScreen() {
     setRefreshing(true);
     try {
       const [userPosts, userComments] = await Promise.all([
-        getPostsByUser(user.id),
-        getCommentsByUser(user.id),
+        getPostsByUser(user.id, user.id),
+        getCommentsByUser(user.id, user.id),
       ]);
       setPosts(userPosts);
       setComments(userComments);

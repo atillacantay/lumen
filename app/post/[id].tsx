@@ -7,10 +7,9 @@ import { useColorScheme } from "@/hooks/use-color-scheme";
 import {
   createComment,
   getCommentsByPost,
-  hasUserHuggedComment,
   toggleCommentHug,
 } from "@/services/comment-service";
-import { getPostById, hasUserHugged, toggleHug } from "@/services/post-service";
+import { getPostById, toggleHug } from "@/services/post-service";
 import { Comment, Post } from "@/types";
 import { Ionicons } from "@expo/vector-icons";
 import { formatDistanceToNow } from "date-fns";
@@ -44,8 +43,6 @@ export default function PostDetailScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [newComment, setNewComment] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [isHugged, setIsHugged] = useState(false);
-  const [huggedComments, setHuggedComments] = useState<Set<string>>(new Set());
 
   // Fetch post and comments
   useEffect(() => {
@@ -54,27 +51,12 @@ export default function PostDetailScreen() {
     const fetchData = async () => {
       try {
         const [fetchedPost, fetchedComments] = await Promise.all([
-          getPostById(id),
-          getCommentsByPost(id),
+          getPostById(id, user?.id),
+          getCommentsByPost(id, "oldest", user?.id),
         ]);
 
         setPost(fetchedPost);
         setComments(fetchedComments);
-
-        // Check hug status
-        if (user && fetchedPost) {
-          const hugged = await hasUserHugged(fetchedPost.id, user.id);
-          setIsHugged(hugged);
-
-          // Check comment hugs
-          const huggedSet = new Set<string>();
-          for (const comment of fetchedComments) {
-            if (await hasUserHuggedComment(comment.id, user.id)) {
-              huggedSet.add(comment.id);
-            }
-          }
-          setHuggedComments(huggedSet);
-        }
       } catch (error) {
         console.error("Veri yüklenemedi:", error);
       } finally {
@@ -90,10 +72,13 @@ export default function PostDetailScreen() {
 
     try {
       const nowHugged = await toggleHug(post.id, user.id);
-      setIsHugged(nowHugged);
       setPost((prev) =>
         prev
-          ? { ...prev, hugsCount: prev.hugsCount + (nowHugged ? 1 : -1) }
+          ? {
+              ...prev,
+              isHugged: nowHugged,
+              hugsCount: prev.hugsCount + (nowHugged ? 1 : -1),
+            }
           : null
       );
     } catch (error) {
@@ -107,20 +92,14 @@ export default function PostDetailScreen() {
     try {
       const nowHugged = await toggleCommentHug(commentId, user.id);
 
-      setHuggedComments((prev) => {
-        const newSet = new Set(prev);
-        if (nowHugged) {
-          newSet.add(commentId);
-        } else {
-          newSet.delete(commentId);
-        }
-        return newSet;
-      });
-
       setComments((prev) =>
         prev.map((c) =>
           c.id === commentId
-            ? { ...c, hugsCount: c.hugsCount + (nowHugged ? 1 : -1) }
+            ? {
+                ...c,
+                isHugged: nowHugged,
+                hugsCount: c.hugsCount + (nowHugged ? 1 : -1),
+              }
             : c
         )
       );
@@ -273,14 +252,14 @@ export default function PostDetailScreen() {
               onPress={handleHugPost}
               style={[
                 styles.hugButton,
-                { backgroundColor: isHugged ? colors.hug : colors.border },
+                { backgroundColor: post.isHugged ? colors.hug : colors.border },
               ]}
             >
-              <Text style={styles.hugEmoji}>{isHugged ? "🤗" : "🫂"}</Text>
+              <Text style={styles.hugEmoji}>{post.isHugged ? "🤗" : "🫂"}</Text>
               <Text
                 style={[
                   styles.hugText,
-                  { color: isHugged ? "#FFF" : colors.text },
+                  { color: post.isHugged ? "#FFF" : colors.text },
                 ]}
               >
                 {post.hugsCount} sarılma
@@ -292,7 +271,7 @@ export default function PostDetailScreen() {
           <CommentList
             postId={post.id}
             comments={comments}
-            huggedComments={huggedComments}
+            userId={user?.id}
             onHugComment={handleHugComment}
             onCommentsChange={setComments}
           />
