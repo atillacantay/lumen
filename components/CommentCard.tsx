@@ -13,14 +13,14 @@ import {
 
 interface CommentCardProps {
   comment: Comment;
-  onHug?: () => void;
   isHugged?: boolean;
+  onHug?: () => void;
 }
 
 export const CommentCard: React.FC<CommentCardProps> = ({
   comment,
-  onHug,
   isHugged = false,
+  onHug,
 }) => {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? "light"];
@@ -31,51 +31,42 @@ export const CommentCard: React.FC<CommentCardProps> = ({
   });
 
   return (
-    <View
-      style={[
-        styles.card,
-        {
-          backgroundColor: colors.surface,
-          borderColor: colors.border,
-        },
-      ]}
-    >
+    <View style={[styles.card, { backgroundColor: colors.surface }]}>
+      {/* Header */}
       <View style={styles.header}>
+        <View style={[styles.avatar, { backgroundColor: colors.primary }]}>
+          <Text style={styles.avatarText}>
+            {comment.authorName.charAt(0).toUpperCase()}
+          </Text>
+        </View>
         <View style={styles.authorInfo}>
-          <View style={[styles.avatar, { backgroundColor: colors.primary }]}>
-            <Text style={styles.avatarText}>
-              {comment.authorName.charAt(0).toUpperCase()}
-            </Text>
-          </View>
-          <View>
-            <Text style={[styles.authorName, { color: colors.text }]}>
-              {comment.authorName}
-            </Text>
-            <Text style={[styles.timeAgo, { color: colors.textMuted }]}>
-              {timeAgo}
-            </Text>
-          </View>
+          <Text style={[styles.authorName, { color: colors.text }]}>
+            {comment.authorName}
+          </Text>
+          <Text style={[styles.timeAgo, { color: colors.textMuted }]}>
+            {timeAgo}
+          </Text>
         </View>
       </View>
 
+      {/* Content */}
       <Text style={[styles.content, { color: colors.text }]}>
         {comment.content}
       </Text>
 
+      {/* Hug Button */}
       <TouchableOpacity
         onPress={onHug}
         style={[
           styles.hugButton,
-          {
-            backgroundColor: isHugged ? colors.hug + "20" : "transparent",
-          },
+          { backgroundColor: isHugged ? colors.hug + "20" : "transparent" },
         ]}
       >
         <Text style={styles.hugEmoji}>{isHugged ? "🤗" : "🫂"}</Text>
         <Text
           style={[
             styles.hugCount,
-            { color: isHugged ? colors.hug : colors.textSecondary },
+            { color: isHugged ? colors.hug : colors.textMuted },
           ]}
         >
           {comment.hugsCount}
@@ -87,20 +78,14 @@ export const CommentCard: React.FC<CommentCardProps> = ({
 
 const styles = StyleSheet.create({
   card: {
-    borderRadius: BorderRadius.md,
+    borderRadius: BorderRadius.lg,
     padding: Spacing.md,
     marginBottom: Spacing.sm,
-    borderWidth: 1,
   },
   header: {
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
     marginBottom: Spacing.sm,
-  },
-  authorInfo: {
-    flexDirection: "row",
-    alignItems: "center",
   },
   avatar: {
     width: 32,
@@ -111,9 +96,12 @@ const styles = StyleSheet.create({
     marginRight: Spacing.sm,
   },
   avatarText: {
-    color: "#FFFFFF",
+    color: "#FFF",
     fontSize: FontSize.sm,
     fontWeight: "bold",
+  },
+  authorInfo: {
+    flex: 1,
   },
   authorName: {
     fontSize: FontSize.sm,
@@ -134,13 +122,13 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.xs,
     borderRadius: BorderRadius.full,
     marginTop: Spacing.sm,
+    gap: 4,
   },
   hugEmoji: {
     fontSize: 14,
-    marginRight: Spacing.xs,
   },
   hugCount: {
-    fontSize: FontSize.xs,
+    fontSize: FontSize.sm,
     fontWeight: "500",
   },
 });

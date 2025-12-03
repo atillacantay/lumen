@@ -1,5 +1,7 @@
-import { LoadingSpinner } from "@/components/LoadingSpinner";
+import { CommentCard } from "@/components/CommentCard";
 import { PostCard } from "@/components/PostCard";
+import { ProfileSkeleton } from "@/components/skeletons";
+import { Tab, Tabs } from "@/components/Tabs";
 import { BorderRadius, Colors, FontSize, Spacing } from "@/constants/theme";
 import { useUser } from "@/context/UserContext";
 import { useColorScheme } from "@/hooks/use-color-scheme";
@@ -7,14 +9,23 @@ import { getCommentsByUser } from "@/services/comment-service";
 import { getPostsByUser } from "@/services/post-service";
 import { Comment, Post } from "@/types";
 import { useRouter } from "expo-router";
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   FlatList,
+  RefreshControl,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
+
+type TabType = "posts" | "comments";
+
+// Empty state configuration
+const emptyStates: Record<TabType, { emoji: string; text: string }> = {
+  posts: { emoji: "📝", text: "Henüz paylaşım yapmadın" },
+  comments: { emoji: "💬", text: "Henüz yorum yapmadın" },
+};
 
 export default function ProfileScreen() {
   const colorScheme = useColorScheme();
@@ -22,16 +33,54 @@ export default function ProfileScreen() {
   const router = useRouter();
   const { user, isLoading: userLoading } = useUser();
 
-  const [activeTab, setActiveTab] = useState<"posts" | "comments">("posts");
+  const [activeTab, setActiveTab] = useState<TabType>("posts");
   const [posts, setPosts] = useState<Post[]>([]);
   const [comments, setComments] = useState<Comment[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
-  const fetchUserData = useCallback(async () => {
+  // Tab configuration
+  const tabs: Tab<TabType>[] = [
+    {
+      key: "posts",
+      label: "Paylaşımlarım",
+      icon: "document-text-outline",
+      badge: posts.length,
+    },
+    {
+      key: "comments",
+      label: "Yorumlarım",
+      icon: "chatbubble-outline",
+      badge: comments.length,
+    },
+  ];
+
+  // Fetch user data
+  useEffect(() => {
     if (!user) return;
 
+    const fetchData = async () => {
+      try {
+        const [userPosts, userComments] = await Promise.all([
+          getPostsByUser(user.id),
+          getCommentsByUser(user.id),
+        ]);
+        setPosts(userPosts);
+        setComments(userComments);
+      } catch (error) {
+        console.error("Failed to load user data:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [user]);
+
+  const onRefresh = async () => {
+    if (!user) return;
+    setRefreshing(true);
     try {
-      setLoading(true);
       const [userPosts, userComments] = await Promise.all([
         getPostsByUser(user.id),
         getCommentsByUser(user.id),
@@ -39,21 +88,30 @@ export default function ProfileScreen() {
       setPosts(userPosts);
       setComments(userComments);
     } catch (error) {
-      console.error("Kullanıcı verileri yüklenemedi:", error);
+      console.error("Refresh error:", error);
     } finally {
-      setLoading(false);
+      setRefreshing(false);
     }
-  }, [user]);
+  };
 
-  useEffect(() => {
-    if (user) {
-      fetchUserData();
-    }
-  }, [user, fetchUserData]);
-
+  // Loading state
   if (userLoading || loading) {
-    return <LoadingSpinner />;
+    return (
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
+        <ProfileSkeleton />
+      </View>
+    );
   }
+
+  // Empty state component
+  const EmptyState = () => (
+    <View style={styles.emptyContainer}>
+      <Text style={styles.emptyEmoji}>{emptyStates[activeTab].emoji}</Text>
+      <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
+        {emptyStates[activeTab].text}
+      </Text>
+    </View>
+  );
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -93,102 +151,57 @@ export default function ProfileScreen() {
       </View>
 
       {/* Tabs */}
-      <View style={styles.tabsContainer}>
-        <TouchableOpacity
-          style={[
-            styles.tab,
-            activeTab === "posts" && {
-              borderBottomColor: colors.primary,
-              borderBottomWidth: 2,
-            },
-          ]}
-          onPress={() => setActiveTab("posts")}
-        >
-          <Text
-            style={[
-              styles.tabText,
-              {
-                color:
-                  activeTab === "posts" ? colors.primary : colors.textSecondary,
-              },
-            ]}
-          >
-            Paylaşımlarım
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[
-            styles.tab,
-            activeTab === "comments" && {
-              borderBottomColor: colors.primary,
-              borderBottomWidth: 2,
-            },
-          ]}
-          onPress={() => setActiveTab("comments")}
-        >
-          <Text
-            style={[
-              styles.tabText,
-              {
-                color:
-                  activeTab === "comments"
-                    ? colors.primary
-                    : colors.textSecondary,
-              },
-            ]}
-          >
-            Yorumlarım
-          </Text>
-        </TouchableOpacity>
-      </View>
+      <Tabs
+        tabs={tabs}
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+        showIcons={true}
+      />
 
       {/* Content */}
       {activeTab === "posts" ? (
         <FlatList
           data={posts}
           keyExtractor={(item) => item.id}
+          contentContainerStyle={styles.listContent}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor={colors.primary}
+            />
+          }
           renderItem={({ item }) => (
             <PostCard
               post={item}
               onPress={() => router.push(`/post/${item.id}` as any)}
             />
           )}
-          contentContainerStyle={styles.listContent}
-          ListEmptyComponent={
-            <View style={styles.emptyContainer}>
-              <Text style={styles.emptyEmoji}>📝</Text>
-              <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
-                Henüz paylaşım yapmadın
-              </Text>
-            </View>
-          }
+          ListEmptyComponent={EmptyState}
         />
       ) : (
         <FlatList
           data={comments}
           keyExtractor={(item) => item.id}
+          contentContainerStyle={styles.listContent}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor={colors.primary}
+            />
+          }
           renderItem={({ item }) => (
             <TouchableOpacity
-              style={[styles.commentItem, { backgroundColor: colors.surface }]}
               onPress={() => router.push(`/post/${item.postId}` as any)}
+              activeOpacity={0.8}
             >
-              <Text style={[styles.commentContent, { color: colors.text }]}>
-                {item.content}
-              </Text>
-              <Text style={[styles.commentMeta, { color: colors.textMuted }]}>
-                {item.hugsCount} sarılma
-              </Text>
+              <CommentCard comment={item} />
             </TouchableOpacity>
           )}
-          contentContainerStyle={styles.listContent}
-          ListEmptyComponent={
-            <View style={styles.emptyContainer}>
-              <Text style={styles.emptyEmoji}>💬</Text>
-              <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
-                Henüz yorum yapmadın
-              </Text>
-            </View>
-          }
+          ListEmptyComponent={EmptyState}
         />
       )}
     </View>
@@ -235,6 +248,7 @@ const styles = StyleSheet.create({
   },
   stat: {
     alignItems: "center",
+    paddingHorizontal: Spacing.md,
   },
   statNumber: {
     fontSize: FontSize.xl,
@@ -242,47 +256,24 @@ const styles = StyleSheet.create({
   },
   statLabel: {
     fontSize: FontSize.sm,
-  },
-  tabsContainer: {
-    flexDirection: "row",
-    paddingHorizontal: Spacing.md,
-    marginTop: Spacing.md,
-  },
-  tab: {
-    flex: 1,
-    paddingVertical: Spacing.md,
-    alignItems: "center",
-  },
-  tabText: {
-    fontSize: FontSize.md,
-    fontWeight: "600",
+    marginTop: Spacing.xs,
   },
   listContent: {
-    paddingVertical: Spacing.md,
+    padding: Spacing.md,
+    flexGrow: 1,
   },
   emptyContainer: {
+    flex: 1,
     alignItems: "center",
-    paddingTop: 50,
+    justifyContent: "center",
+    paddingTop: 80,
   },
   emptyEmoji: {
-    fontSize: 48,
+    fontSize: 56,
     marginBottom: Spacing.md,
   },
   emptyText: {
     fontSize: FontSize.md,
-  },
-  commentItem: {
-    marginHorizontal: Spacing.md,
-    marginBottom: Spacing.sm,
-    padding: Spacing.md,
-    borderRadius: BorderRadius.md,
-  },
-  commentContent: {
-    fontSize: FontSize.md,
-    lineHeight: 22,
-  },
-  commentMeta: {
-    fontSize: FontSize.xs,
-    marginTop: Spacing.sm,
+    textAlign: "center",
   },
 });

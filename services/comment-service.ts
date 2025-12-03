@@ -69,11 +69,27 @@ export const createComment = async (
   };
 };
 
-export const getCommentsByPost = async (postId: string): Promise<Comment[]> => {
+export type CommentSortOption = "oldest" | "newest" | "popular";
+
+const COMMENT_SORT_CONFIG: Record<
+  CommentSortOption,
+  { field: string; direction: "asc" | "desc" }
+> = {
+  oldest: { field: "createdAt", direction: "asc" },
+  newest: { field: "createdAt", direction: "desc" },
+  popular: { field: "hugsCount", direction: "desc" },
+};
+
+export const getCommentsByPost = async (
+  postId: string,
+  sortBy: CommentSortOption = "oldest"
+): Promise<Comment[]> => {
+  const { field, direction } = COMMENT_SORT_CONFIG[sortBy];
+
   const q = query(
     collection(db, COMMENTS_COLLECTION),
     where("postId", "==", postId),
-    orderBy("createdAt", "asc")
+    orderBy(field, direction)
   );
 
   const snapshot = await getDocs(q);

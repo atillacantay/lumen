@@ -27,13 +27,16 @@ export default function CreatePostScreen() {
   const colors = Colors[colorScheme ?? "light"];
   const router = useRouter();
   const { user } = useUser();
-  const { categories, isLoading: categoriesLoading } = useCategories();
+  const { categories } = useCategories();
 
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [categoryId, setCategoryId] = useState<string | null>(null);
   const [imageUri, setImageUri] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  // Form validation
+  const canSubmit = title.trim() && content.trim() && categoryId && user;
 
   const pickImage = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -58,45 +61,24 @@ export default function CreatePostScreen() {
   };
 
   const handleSubmit = async () => {
-    if (!title.trim()) {
-      Alert.alert("Hata", "Başlık boş olamaz.");
-      return;
-    }
-    if (!content.trim()) {
-      Alert.alert("Hata", "İçerik boş olamaz.");
-      return;
-    }
-    if (!selectedCategory) {
-      Alert.alert("Hata", "Bir kategori seçmelisin.");
-      return;
-    }
-    if (!user) {
-      Alert.alert("Hata", "Kullanıcı bilgisi alınamadı.");
-      return;
-    }
+    if (!canSubmit) return;
 
     setLoading(true);
-
     try {
-      let uploadedImageUrl: string | undefined;
-
-      if (imageUri) {
-        const url = await uploadImage(imageUri);
-        if (url) {
-          uploadedImageUrl = url;
-        }
-      }
+      const uploadedImageUrl = imageUri
+        ? await uploadImage(imageUri)
+        : undefined;
 
       await createPost({
         title: title.trim(),
         content: content.trim(),
-        categoryId: selectedCategory!,
-        authorId: user!.id,
-        authorName: user!.anonymousName,
-        imageUrl: uploadedImageUrl,
+        categoryId,
+        authorId: user.id,
+        authorName: user.anonymousName,
+        imageUrl: uploadedImageUrl ?? undefined,
       });
 
-      Alert.alert("Başarılı", "Derdini paylaştın! Umarız rahatlarsın 🤗", [
+      Alert.alert("Başarılı", "Derdini paylaştın! 🤗", [
         { text: "Tamam", onPress: () => router.back() },
       ]);
     } catch (error) {
@@ -130,157 +112,118 @@ export default function CreatePostScreen() {
           </Text>
           <TouchableOpacity
             onPress={handleSubmit}
-            disabled={loading}
+            disabled={loading || !canSubmit}
             style={[
-              styles.submitHeaderButton,
-              { backgroundColor: colors.primary },
+              styles.submitButton,
+              { backgroundColor: canSubmit ? colors.primary : colors.border },
             ]}
           >
             {loading ? (
               <ActivityIndicator size="small" color="#FFF" />
             ) : (
-              <Text style={styles.submitHeaderButtonText}>Paylaş</Text>
+              <Text style={styles.submitButtonText}>Paylaş</Text>
             )}
           </TouchableOpacity>
         </View>
 
         {/* Form */}
         <View style={styles.form}>
-          {/* Title Input */}
-          <View style={styles.inputContainer}>
-            <Text style={[styles.label, { color: colors.text }]}>Başlık</Text>
-            <TextInput
-              style={[
-                styles.input,
-                {
-                  backgroundColor: colors.surface,
-                  borderColor: colors.border,
-                  color: colors.text,
-                },
-              ]}
-              placeholder="Ne sıkıntı var?"
-              placeholderTextColor={colors.textMuted}
-              value={title}
-              onChangeText={setTitle}
-              maxLength={100}
-            />
-          </View>
+          {/* Title */}
+          <Text style={[styles.label, { color: colors.text }]}>Başlık</Text>
+          <TextInput
+            style={[
+              styles.input,
+              { backgroundColor: colors.surface, color: colors.text },
+            ]}
+            placeholder="Ne sıkıntı var?"
+            placeholderTextColor={colors.textMuted}
+            value={title}
+            onChangeText={setTitle}
+            maxLength={100}
+          />
 
-          {/* Content Input */}
-          <View style={styles.inputContainer}>
-            <Text style={[styles.label, { color: colors.text }]}>
-              Anlat bakalım...
-            </Text>
-            <TextInput
-              style={[
-                styles.textArea,
-                {
-                  backgroundColor: colors.surface,
-                  borderColor: colors.border,
-                  color: colors.text,
-                },
-              ]}
-              placeholder="İçini dök, rahatla..."
-              placeholderTextColor={colors.textMuted}
-              value={content}
-              onChangeText={setContent}
-              multiline
-              numberOfLines={6}
-              textAlignVertical="top"
-            />
-          </View>
+          {/* Content */}
+          <Text style={[styles.label, { color: colors.text }]}>
+            Anlat bakalım...
+          </Text>
+          <TextInput
+            style={[
+              styles.textArea,
+              { backgroundColor: colors.surface, color: colors.text },
+            ]}
+            placeholder="İçini dök, rahatla..."
+            placeholderTextColor={colors.textMuted}
+            value={content}
+            onChangeText={setContent}
+            multiline
+            textAlignVertical="top"
+          />
 
-          {/* Category Selection */}
-          <View style={styles.inputContainer}>
-            <Text style={[styles.label, { color: colors.text }]}>
-              Kategori Seç
-            </Text>
-            {categoriesLoading ? (
-              <ActivityIndicator size="small" color={colors.primary} />
-            ) : (
-              <View style={styles.categories}>
-                {categories.map((category) => (
-                  <TouchableOpacity
-                    key={category.id}
-                    style={[
-                      styles.categoryChip,
-                      {
-                        backgroundColor:
-                          selectedCategory === category.id
-                            ? category.color
-                            : colors.surface,
-                        borderColor: category.color,
-                      },
-                    ]}
-                    onPress={() => setSelectedCategory(category.id)}
-                  >
-                    <Text style={styles.categoryIcon}>{category.emoji}</Text>
-                    <Text
-                      style={[
-                        styles.categoryText,
-                        {
-                          color:
-                            selectedCategory === category.id
-                              ? "#FFF"
-                              : colors.text,
-                        },
-                      ]}
-                    >
-                      {category.name}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            )}
-          </View>
-
-          {/* Image Picker */}
-          <View style={styles.inputContainer}>
-            <Text style={[styles.label, { color: colors.text }]}>
-              Resim Ekle (Opsiyonel)
-            </Text>
-            <TouchableOpacity
-              style={[
-                styles.imagePicker,
-                {
-                  backgroundColor: colors.surface,
-                  borderColor: colors.border,
-                },
-              ]}
-              onPress={pickImage}
-            >
-              {imageUri ? (
-                <Image source={{ uri: imageUri }} style={styles.previewImage} />
-              ) : (
-                <View style={styles.imagePickerContent}>
-                  <Ionicons
-                    name="image-outline"
-                    size={40}
-                    color={colors.textMuted}
-                  />
-                  <Text
-                    style={[
-                      styles.imagePickerText,
-                      { color: colors.textSecondary },
-                    ]}
-                  >
-                    Resim seçmek için dokun
-                  </Text>
-                </View>
-              )}
-            </TouchableOpacity>
-            {imageUri && (
+          {/* Categories */}
+          <Text style={[styles.label, { color: colors.text }]}>
+            Kategori Seç
+          </Text>
+          <View style={styles.categories}>
+            {categories.map((cat) => (
               <TouchableOpacity
-                onPress={() => setImageUri(null)}
-                style={styles.removeImageButton}
+                key={cat.id}
+                style={[
+                  styles.categoryChip,
+                  {
+                    backgroundColor:
+                      categoryId === cat.id ? cat.color : colors.surface,
+                    borderColor: cat.color,
+                  },
+                ]}
+                onPress={() => setCategoryId(cat.id)}
               >
-                <Ionicons name="trash-outline" size={18} color={colors.error} />
-                <Text style={[styles.removeImageText, { color: colors.error }]}>
-                  Resmi Kaldır
+                <Text style={styles.categoryEmoji}>{cat.emoji}</Text>
+                <Text
+                  style={[
+                    styles.categoryText,
+                    { color: categoryId === cat.id ? "#FFF" : colors.text },
+                  ]}
+                >
+                  {cat.name}
                 </Text>
               </TouchableOpacity>
-            )}
+            ))}
           </View>
+
+          {/* Image */}
+          <Text style={[styles.label, { color: colors.text }]}>
+            Resim Ekle (Opsiyonel)
+          </Text>
+          {imageUri ? (
+            <View style={styles.imagePreviewContainer}>
+              <Image source={{ uri: imageUri }} style={styles.previewImage} />
+              <TouchableOpacity
+                onPress={() => setImageUri(null)}
+                style={[
+                  styles.removeImageButton,
+                  { backgroundColor: colors.error },
+                ]}
+              >
+                <Ionicons name="close" size={20} color="#FFF" />
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <TouchableOpacity
+              style={[styles.imagePicker, { backgroundColor: colors.surface }]}
+              onPress={pickImage}
+            >
+              <Ionicons
+                name="image-outline"
+                size={32}
+                color={colors.textMuted}
+              />
+              <Text
+                style={[styles.imagePickerText, { color: colors.textMuted }]}
+              >
+                Resim seç
+              </Text>
+            </TouchableOpacity>
+          )}
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -309,43 +252,39 @@ const styles = StyleSheet.create({
     fontSize: FontSize.lg,
     fontWeight: "600",
   },
-  submitHeaderButton: {
+  submitButton: {
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.sm,
     borderRadius: BorderRadius.full,
     minWidth: 70,
     alignItems: "center",
   },
-  submitHeaderButtonText: {
+  submitButtonText: {
     color: "#FFF",
     fontWeight: "600",
     fontSize: FontSize.sm,
   },
   form: {
     padding: Spacing.md,
-  },
-  inputContainer: {
-    marginBottom: Spacing.lg,
+    gap: Spacing.md,
   },
   label: {
     fontSize: FontSize.md,
     fontWeight: "600",
-    marginBottom: Spacing.sm,
+    marginBottom: Spacing.xs,
   },
   input: {
-    borderWidth: 1.5,
     borderRadius: BorderRadius.md,
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.md,
     fontSize: FontSize.md,
   },
   textArea: {
-    borderWidth: 1.5,
     borderRadius: BorderRadius.md,
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.md,
     fontSize: FontSize.md,
-    minHeight: 150,
+    minHeight: 120,
   },
   categories: {
     flexDirection: "row",
@@ -361,7 +300,7 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     gap: Spacing.xs,
   },
-  categoryIcon: {
+  categoryEmoji: {
     fontSize: 16,
   },
   categoryText: {
@@ -369,34 +308,34 @@ const styles = StyleSheet.create({
     fontWeight: "500",
   },
   imagePicker: {
-    height: 180,
+    height: 100,
     borderRadius: BorderRadius.lg,
-    borderWidth: 2,
-    borderStyle: "dashed",
+    flexDirection: "row",
     justifyContent: "center",
-    alignItems: "center",
-    overflow: "hidden",
-  },
-  imagePickerContent: {
     alignItems: "center",
     gap: Spacing.sm,
   },
   imagePickerText: {
-    fontSize: FontSize.md,
+    fontSize: FontSize.sm,
+  },
+  imagePreviewContainer: {
+    position: "relative",
+    borderRadius: BorderRadius.lg,
+    overflow: "hidden",
   },
   previewImage: {
     width: "100%",
-    height: "100%",
-    resizeMode: "cover",
+    height: 180,
+    borderRadius: BorderRadius.lg,
   },
   removeImageButton: {
-    flexDirection: "row",
-    alignItems: "center",
+    position: "absolute",
+    top: Spacing.sm,
+    right: Spacing.sm,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     justifyContent: "center",
-    marginTop: Spacing.sm,
-    gap: Spacing.xs,
-  },
-  removeImageText: {
-    fontSize: FontSize.sm,
+    alignItems: "center",
   },
 });

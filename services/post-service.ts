@@ -83,14 +83,25 @@ export const createPost = async (input: CreatePostInput): Promise<Post> => {
   };
 };
 
+export type SortOption = "newest" | "popular" | "mostComments";
+
+const SORT_FIELDS: Record<SortOption, string> = {
+  newest: "createdAt",
+  popular: "hugsCount",
+  mostComments: "commentsCount",
+};
+
 export const getPosts = async (
   lastDoc?: DocumentSnapshot | null,
   categoryId?: string,
+  sortBy: SortOption = "newest",
   pageSize: number = PAGE_SIZE
 ): Promise<GetPostsResponse> => {
+  const sortField = SORT_FIELDS[sortBy];
+
   let q = query(
     collection(db, POSTS_COLLECTION),
-    orderBy("createdAt", "desc"),
+    orderBy(sortField, "desc"),
     limit(pageSize)
   );
 
@@ -98,7 +109,7 @@ export const getPosts = async (
     q = query(
       collection(db, POSTS_COLLECTION),
       where("categoryId", "==", categoryId),
-      orderBy("createdAt", "desc"),
+      orderBy(sortField, "desc"),
       limit(pageSize)
     );
   }

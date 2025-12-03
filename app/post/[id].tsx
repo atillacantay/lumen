@@ -1,3 +1,5 @@
+import { CommentList } from "@/components/CommentList";
+import { PostDetailSkeleton, Skeleton } from "@/components/skeletons";
 import { BorderRadius, Colors, FontSize, Spacing } from "@/constants/theme";
 import { useCategories } from "@/context/CategoryContext";
 import { useUser } from "@/context/UserContext";
@@ -14,7 +16,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { formatDistanceToNow } from "date-fns";
 import { tr } from "date-fns/locale";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -39,52 +41,49 @@ export default function PostDetailScreen() {
 
   const [post, setPost] = useState<Post | null>(null);
   const [comments, setComments] = useState<Comment[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(true);
   const [newComment, setNewComment] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [isHugged, setIsHugged] = useState(false);
   const [huggedComments, setHuggedComments] = useState<Set<string>>(new Set());
 
-  const fetchData = useCallback(async () => {
+  // Fetch post and comments
+  useEffect(() => {
     if (!id) return;
 
-    try {
-      setLoading(true);
-      const [fetchedPost, fetchedComments] = await Promise.all([
-        getPostById(id),
-        getCommentsByPost(id),
-      ]);
+    const fetchData = async () => {
+      try {
+        const [fetchedPost, fetchedComments] = await Promise.all([
+          getPostById(id),
+          getCommentsByPost(id),
+        ]);
 
-      if (fetchedPost) {
         setPost(fetchedPost);
+        setComments(fetchedComments);
 
-        if (user) {
+        // Check hug status
+        if (user && fetchedPost) {
           const hugged = await hasUserHugged(fetchedPost.id, user.id);
           setIsHugged(hugged);
+
+          // Check comment hugs
+          const huggedSet = new Set<string>();
+          for (const comment of fetchedComments) {
+            if (await hasUserHuggedComment(comment.id, user.id)) {
+              huggedSet.add(comment.id);
+            }
+          }
+          setHuggedComments(huggedSet);
         }
+      } catch (error) {
+        console.error("Veri yüklenemedi:", error);
+      } finally {
+        setIsLoading(false);
       }
+    };
 
-      setComments(fetchedComments);
-
-      // Check hugged status for comments
-      if (user && fetchedComments.length > 0) {
-        const huggedSet = new Set<string>();
-        for (const comment of fetchedComments) {
-          const hugged = await hasUserHuggedComment(comment.id, user.id);
-          if (hugged) huggedSet.add(comment.id);
-        }
-        setHuggedComments(huggedSet);
-      }
-    } catch (error) {
-      console.error("Veri yüklenemedi:", error);
-    } finally {
-      setLoading(false);
-    }
-  }, [id, user]);
-
-  useEffect(() => {
     fetchData();
-  }, [fetchData]);
+  }, [id, user]);
 
   const handleHugPost = async () => {
     if (!user || !post) return;
@@ -131,11 +130,7 @@ export default function PostDetailScreen() {
   };
 
   const handleSubmitComment = async () => {
-    if (!newComment.trim()) {
-      Alert.alert("Hata", "Yorum boş olamaz.");
-      return;
-    }
-    if (!user || !post) return;
+    if (!newComment.trim() || !user || !post) return;
 
     setSubmitting(true);
     try {
@@ -150,8 +145,7 @@ export default function PostDetailScreen() {
         prev ? { ...prev, commentsCount: prev.commentsCount + 1 } : null
       );
       setNewComment("");
-    } catch (error) {
-      console.error("Yorum gönderilemedi:", error);
+    } catch {
       Alert.alert("Hata", "Yorum gönderilemedi.");
     } finally {
       setSubmitting(false);
@@ -166,37 +160,50 @@ export default function PostDetailScreen() {
     }
   };
 
-  if (loading) {
+  const category = post ? getCategoryById(post.categoryId) : null;
+
+  // Loading state
+  if (isLoading) {
     return (
-      <View
-        style={[
-          styles.loadingContainer,
-          { backgroundColor: colors.background },
-        ]}
-      >
-        <ActivityIndicator size="large" color={colors.primary} />
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
+        <View style={[styles.header, { backgroundColor: colors.surface }]}>
+          <TouchableOpacity
+            onPress={() => router.back()}
+            style={styles.backButton}
+          >
+            <Ionicons name="arrow-back" size={24} color={colors.text} />
+          </TouchableOpacity>
+          <Skeleton width={120} height={20} borderRadius={BorderRadius.sm} />
+          <View style={styles.headerSpacer} />
+        </View>
+        <PostDetailSkeleton />
       </View>
     );
   }
 
+  // Error state
   if (!post) {
     return (
-      <View
-        style={[styles.errorContainer, { backgroundColor: colors.background }]}
-      >
-        <Text style={[styles.errorText, { color: colors.textSecondary }]}>
-          Post bulunamadı
-        </Text>
-        <TouchableOpacity onPress={() => router.back()}>
-          <Text style={[styles.backLink, { color: colors.primary }]}>
-            Geri Dön
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
+        <View style={[styles.header, { backgroundColor: colors.surface }]}>
+          <TouchableOpacity
+            onPress={() => router.back()}
+            style={styles.backButton}
+          >
+            <Ionicons name="arrow-back" size={24} color={colors.text} />
+          </TouchableOpacity>
+          <Text style={[styles.headerTitle, { color: colors.text }]}>Hata</Text>
+          <View style={styles.headerSpacer} />
+        </View>
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorIcon}>😕</Text>
+          <Text style={[styles.errorText, { color: colors.textSecondary }]}>
+            Post bulunamadı
           </Text>
-        </TouchableOpacity>
+        </View>
       </View>
     );
   }
-
-  const category = getCategoryById(post.categoryId);
 
   return (
     <KeyboardAvoidingView
@@ -216,7 +223,7 @@ export default function PostDetailScreen() {
             style={[styles.headerTitle, { color: colors.text }]}
             numberOfLines={1}
           >
-            {category?.name || "Paylaşım"}
+            {category?.emoji} {category?.name || "Paylaşım"}
           </Text>
           <View style={styles.headerSpacer} />
         </View>
@@ -225,9 +232,9 @@ export default function PostDetailScreen() {
           style={styles.scrollView}
           contentContainerStyle={styles.scrollContent}
         >
-          {/* Post Content */}
+          {/* Post */}
           <View style={[styles.postCard, { backgroundColor: colors.surface }]}>
-            {/* Author Info */}
+            {/* Author */}
             <View style={styles.authorRow}>
               <View
                 style={[
@@ -247,20 +254,9 @@ export default function PostDetailScreen() {
                   {formatDate(post.createdAt)}
                 </Text>
               </View>
-              {category && (
-                <View
-                  style={[
-                    styles.categoryBadge,
-                    { backgroundColor: category.color },
-                  ]}
-                >
-                  <Text style={styles.categoryIcon}>{category.emoji}</Text>
-                  <Text style={styles.categoryText}>{category.name}</Text>
-                </View>
-              )}
             </View>
 
-            {/* Title & Content */}
+            {/* Content */}
             <Text style={[styles.postTitle, { color: colors.text }]}>
               {post.title}
             </Text>
@@ -268,7 +264,6 @@ export default function PostDetailScreen() {
               {post.content}
             </Text>
 
-            {/* Image */}
             {post.imageUrl && (
               <Image source={{ uri: post.imageUrl }} style={styles.postImage} />
             )}
@@ -278,9 +273,7 @@ export default function PostDetailScreen() {
               onPress={handleHugPost}
               style={[
                 styles.hugButton,
-                {
-                  backgroundColor: isHugged ? colors.hug : colors.border,
-                },
+                { backgroundColor: isHugged ? colors.hug : colors.border },
               ]}
             >
               <Text style={styles.hugEmoji}>{isHugged ? "🤗" : "🫂"}</Text>
@@ -290,110 +283,28 @@ export default function PostDetailScreen() {
                   { color: isHugged ? "#FFF" : colors.text },
                 ]}
               >
-                {post.hugsCount} kişi sarıldı
+                {post.hugsCount} sarılma
               </Text>
             </TouchableOpacity>
           </View>
 
-          {/* Comments Section */}
-          <View style={styles.commentsSection}>
-            <Text style={[styles.commentsTitle, { color: colors.text }]}>
-              💬 Yorumlar ({post.commentsCount})
-            </Text>
-
-            {comments.length === 0 ? (
-              <View style={styles.noComments}>
-                <Text
-                  style={[styles.noCommentsText, { color: colors.textMuted }]}
-                >
-                  Henüz yorum yok. İlk yorumu sen yap!
-                </Text>
-              </View>
-            ) : (
-              comments.map((comment) => (
-                <View
-                  key={comment.id}
-                  style={[
-                    styles.commentCard,
-                    { backgroundColor: colors.surface },
-                  ]}
-                >
-                  <View style={styles.commentHeader}>
-                    <View
-                      style={[
-                        styles.commentAvatar,
-                        { backgroundColor: colors.primary },
-                      ]}
-                    >
-                      <Text style={styles.commentAvatarText}>
-                        {comment.authorName.charAt(0).toUpperCase()}
-                      </Text>
-                    </View>
-                    <View style={styles.commentAuthorInfo}>
-                      <Text
-                        style={[
-                          styles.commentAuthorName,
-                          { color: colors.text },
-                        ]}
-                      >
-                        {comment.authorName}
-                      </Text>
-                      <Text
-                        style={[
-                          styles.commentTime,
-                          { color: colors.textMuted },
-                        ]}
-                      >
-                        {formatDate(comment.createdAt)}
-                      </Text>
-                    </View>
-                  </View>
-                  <Text style={[styles.commentContent, { color: colors.text }]}>
-                    {comment.content}
-                  </Text>
-                  <TouchableOpacity
-                    onPress={() => handleHugComment(comment.id)}
-                    style={[
-                      styles.commentHugButton,
-                      {
-                        backgroundColor: huggedComments.has(comment.id)
-                          ? colors.hug + "20"
-                          : "transparent",
-                      },
-                    ]}
-                  >
-                    <Text style={styles.commentHugEmoji}>
-                      {huggedComments.has(comment.id) ? "🤗" : "🫂"}
-                    </Text>
-                    <Text
-                      style={[
-                        styles.commentHugText,
-                        {
-                          color: huggedComments.has(comment.id)
-                            ? colors.hug
-                            : colors.textMuted,
-                        },
-                      ]}
-                    >
-                      {comment.hugsCount}
-                    </Text>
-                  </TouchableOpacity>
-                </View>
-              ))
-            )}
-          </View>
+          {/* Comments */}
+          <CommentList
+            postId={post.id}
+            comments={comments}
+            huggedComments={huggedComments}
+            onHugComment={handleHugComment}
+            onCommentsChange={setComments}
+          />
         </ScrollView>
 
         {/* Comment Input */}
         <View
-          style={[
-            styles.commentInputContainer,
-            { backgroundColor: colors.surface },
-          ]}
+          style={[styles.inputContainer, { backgroundColor: colors.surface }]}
         >
           <TextInput
             style={[
-              styles.commentInput,
+              styles.input,
               { backgroundColor: colors.background, color: colors.text },
             ]}
             placeholder="Destek ol, yorum yaz..."
@@ -412,7 +323,6 @@ export default function PostDetailScreen() {
                 backgroundColor: newComment.trim()
                   ? colors.primary
                   : colors.border,
-                opacity: submitting ? 0.5 : 1,
               },
             ]}
           >
@@ -432,32 +342,12 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  errorContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    gap: Spacing.md,
-  },
-  errorText: {
-    fontSize: FontSize.lg,
-  },
-  backLink: {
-    fontSize: FontSize.md,
-    fontWeight: "600",
-  },
   header: {
     flexDirection: "row",
     alignItems: "center",
     paddingTop: 60,
     paddingBottom: Spacing.md,
     paddingHorizontal: Spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: "rgba(0,0,0,0.05)",
   },
   backButton: {
     padding: Spacing.xs,
@@ -467,10 +357,21 @@ const styles = StyleSheet.create({
     fontSize: FontSize.lg,
     fontWeight: "600",
     textAlign: "center",
-    marginHorizontal: Spacing.md,
   },
   headerSpacer: {
     width: 32,
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    gap: Spacing.md,
+  },
+  errorIcon: {
+    fontSize: 48,
+  },
+  errorText: {
+    fontSize: FontSize.md,
   },
   scrollView: {
     flex: 1,
@@ -513,27 +414,10 @@ const styles = StyleSheet.create({
     fontSize: FontSize.xs,
     marginTop: 2,
   },
-  categoryBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: Spacing.sm,
-    paddingVertical: 4,
-    borderRadius: BorderRadius.full,
-    gap: 4,
-  },
-  categoryIcon: {
-    fontSize: 12,
-  },
-  categoryText: {
-    color: "#FFF",
-    fontSize: FontSize.xs,
-    fontWeight: "600",
-  },
   postTitle: {
     fontSize: FontSize.xl,
     fontWeight: "bold",
     marginBottom: Spacing.sm,
-    lineHeight: 30,
   },
   postContent: {
     fontSize: FontSize.md,
@@ -541,7 +425,7 @@ const styles = StyleSheet.create({
   },
   postImage: {
     width: "100%",
-    height: 220,
+    height: 200,
     borderRadius: BorderRadius.md,
     marginTop: Spacing.md,
   },
@@ -555,90 +439,19 @@ const styles = StyleSheet.create({
     gap: Spacing.sm,
   },
   hugEmoji: {
-    fontSize: 24,
+    fontSize: 22,
   },
   hugText: {
     fontSize: FontSize.md,
     fontWeight: "600",
   },
-  commentsSection: {
-    marginTop: Spacing.md,
-  },
-  commentsTitle: {
-    fontSize: FontSize.lg,
-    fontWeight: "600",
-    marginBottom: Spacing.md,
-  },
-  noComments: {
-    alignItems: "center",
-    paddingVertical: Spacing.xl,
-  },
-  noCommentsText: {
-    fontSize: FontSize.md,
-  },
-  commentCard: {
-    borderRadius: BorderRadius.md,
-    padding: Spacing.md,
-    marginBottom: Spacing.sm,
-  },
-  commentHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: Spacing.sm,
-  },
-  commentAvatar: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    justifyContent: "center",
-    alignItems: "center",
-    marginRight: Spacing.sm,
-  },
-  commentAvatarText: {
-    color: "#FFF",
-    fontSize: FontSize.sm,
-    fontWeight: "bold",
-  },
-  commentAuthorInfo: {
-    flex: 1,
-  },
-  commentAuthorName: {
-    fontSize: FontSize.sm,
-    fontWeight: "600",
-  },
-  commentTime: {
-    fontSize: FontSize.xs,
-  },
-  commentContent: {
-    fontSize: FontSize.md,
-    lineHeight: 22,
-    marginBottom: Spacing.sm,
-  },
-  commentHugButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    alignSelf: "flex-start",
-    paddingHorizontal: Spacing.sm,
-    paddingVertical: Spacing.xs,
-    borderRadius: BorderRadius.full,
-    gap: 4,
-  },
-  commentHugEmoji: {
-    fontSize: 14,
-  },
-  commentHugText: {
-    fontSize: FontSize.sm,
-    fontWeight: "500",
-  },
-  commentInputContainer: {
+  inputContainer: {
     flexDirection: "row",
     alignItems: "center",
     padding: Spacing.md,
     gap: Spacing.sm,
-    borderTopWidth: 1,
-    borderTopColor: "rgba(0,0,0,0.05)",
   },
-  commentInput: {
+  input: {
     flex: 1,
     borderRadius: BorderRadius.lg,
     paddingHorizontal: Spacing.md,
