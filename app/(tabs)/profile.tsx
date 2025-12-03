@@ -1,15 +1,20 @@
 import { CommentCard } from "@/components/CommentCard";
+import { ListFooter } from "@/components/ListFooter";
 import { PostCard } from "@/components/PostCard";
 import { ProfileSkeleton } from "@/components/skeletons";
 import { Tab, Tabs } from "@/components/Tabs";
 import { BorderRadius, Colors, FontSize, Spacing } from "@/constants/theme";
 import { useUser } from "@/context/UserContext";
 import { useColorScheme } from "@/hooks/use-color-scheme";
-import { getCommentsByUser } from "@/services/comment-service";
-import { getPostsByUser } from "@/services/post-service";
+import { useInfiniteList } from "@/hooks/use-infinite-list";
+import {
+  getCommentsByUser,
+  toggleCommentHug,
+} from "@/services/comment-service";
+import { getPostsByUser, toggleHug } from "@/services/post-service";
 import { Comment, Post } from "@/types";
 import { useRouter } from "expo-router";
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import {
   FlatList,
   RefreshControl,
@@ -27,6 +32,16 @@ const emptyStates: Record<TabType, { emoji: string; text: string }> = {
   comments: { emoji: "💬", text: "Henüz yorum yapmadın" },
 };
 
+interface PostFetchParams {
+  authorId: string;
+  userId: string;
+}
+
+interface CommentFetchParams {
+  authorId: string;
+  userId: string;
+}
+
 export default function ProfileScreen() {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? "light"];
@@ -34,10 +49,76 @@ export default function ProfileScreen() {
   const { user, isLoading: userLoading } = useUser();
 
   const [activeTab, setActiveTab] = useState<TabType>("posts");
-  const [posts, setPosts] = useState<Post[]>([]);
-  const [comments, setComments] = useState<Comment[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
+
+  // Posts infinite list
+  const postParams = useMemo<PostFetchParams>(
+    () => ({ authorId: user?.id || "", userId: user?.id || "" }),
+    [user?.id]
+  );
+
+  const fetchPosts = useCallback(
+    async (cursor: unknown | null, { authorId, userId }: PostFetchParams) => {
+      if (!authorId) return { items: [], nextCursor: null };
+      const result = await getPostsByUser(authorId, userId, cursor as any, 20);
+      return { items: result.posts, nextCursor: result.lastDoc };
+    },
+    []
+  );
+
+  const {
+    items: posts,
+    isLoading: postsLoading,
+    isLoadingMore: postsLoadingMore,
+    isRefreshing: postsRefreshing,
+    hasMore: postsHasMore,
+    loadMore: loadMorePosts,
+    refresh: refreshPosts,
+    updateItem: updatePost,
+  } = useInfiniteList<Post, PostFetchParams>({
+    fetchFn: fetchPosts,
+    params: postParams,
+    pageSize: 20,
+    enabled: !!user?.id,
+  });
+
+  // Comments infinite list
+  const commentParams = useMemo<CommentFetchParams>(
+    () => ({ authorId: user?.id || "", userId: user?.id || "" }),
+    [user?.id]
+  );
+
+  const fetchComments = useCallback(
+    async (
+      cursor: unknown | null,
+      { authorId, userId }: CommentFetchParams
+    ) => {
+      if (!authorId) return { items: [], nextCursor: null };
+      const result = await getCommentsByUser(
+        authorId,
+        userId,
+        cursor as any,
+        20
+      );
+      return { items: result.comments, nextCursor: result.lastDoc };
+    },
+    []
+  );
+
+  const {
+    items: comments,
+    isLoading: commentsLoading,
+    isLoadingMore: commentsLoadingMore,
+    isRefreshing: commentsRefreshing,
+    hasMore: commentsHasMore,
+    loadMore: loadMoreComments,
+    refresh: refreshComments,
+    updateItem: updateComment,
+  } = useInfiniteList<Comment, CommentFetchParams>({
+    fetchFn: fetchComments,
+    params: commentParams,
+    pageSize: 20,
+    enabled: !!user?.id,
+  });
 
   // Tab configuration
   const tabs: Tab<TabType>[] = [
@@ -55,47 +136,48 @@ export default function ProfileScreen() {
     },
   ];
 
-  // Fetch user data
-  useEffect(() => {
+  const handleHugPost = async (postId: string) => {
     if (!user) return;
-
-    const fetchData = async () => {
-      try {
-        const [userPosts, userComments] = await Promise.all([
-          getPostsByUser(user.id, user.id),
-          getCommentsByUser(user.id, user.id),
-        ]);
-        setPosts(userPosts);
-        setComments(userComments);
-      } catch (error) {
-        console.error("Failed to load user data:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchData();
-  }, [user]);
-
-  const onRefresh = async () => {
-    if (!user) return;
-    setRefreshing(true);
     try {
-      const [userPosts, userComments] = await Promise.all([
-        getPostsByUser(user.id, user.id),
-        getCommentsByUser(user.id, user.id),
-      ]);
-      setPosts(userPosts);
-      setComments(userComments);
+      const nowHugged = await toggleHug(postId, user.id);
+      updatePost(postId, (post) => ({
+        ...post,
+        isHugged: nowHugged,
+        hugsCount: post.hugsCount + (nowHugged ? 1 : -1),
+      }));
     } catch (error) {
-      console.error("Refresh error:", error);
-    } finally {
-      setRefreshing(false);
+      console.error("Hug error:", error);
+    }
+  };
+
+  const handleHugComment = async (commentId: string) => {
+    if (!user) return;
+    try {
+      const nowHugged = await toggleCommentHug(commentId, user.id);
+      updateComment(commentId, (comment) => ({
+        ...comment,
+        isHugged: nowHugged,
+        hugsCount: comment.hugsCount + (nowHugged ? 1 : -1),
+      }));
+    } catch (error) {
+      console.error("Comment hug error:", error);
+    }
+  };
+
+  const handlePostsEndReached = () => {
+    if (postsHasMore && !postsLoadingMore) {
+      loadMorePosts();
+    }
+  };
+
+  const handleCommentsEndReached = () => {
+    if (commentsHasMore && !commentsLoadingMore) {
+      loadMoreComments();
     }
   };
 
   // Loading state
-  if (userLoading || loading) {
+  if (userLoading || (postsLoading && commentsLoading)) {
     return (
       <View style={[styles.container, { backgroundColor: colors.background }]}>
         <ProfileSkeleton />
@@ -167,8 +249,8 @@ export default function ProfileScreen() {
           showsVerticalScrollIndicator={false}
           refreshControl={
             <RefreshControl
-              refreshing={refreshing}
-              onRefresh={onRefresh}
+              refreshing={postsRefreshing}
+              onRefresh={refreshPosts}
               tintColor={colors.primary}
             />
           }
@@ -176,8 +258,12 @@ export default function ProfileScreen() {
             <PostCard
               post={item}
               onPress={() => router.push(`/post/${item.id}` as any)}
+              onHug={() => handleHugPost(item.id)}
             />
           )}
+          onEndReached={handlePostsEndReached}
+          onEndReachedThreshold={0.5}
+          ListFooterComponent={<ListFooter isLoadingMore={postsLoadingMore} />}
           ListEmptyComponent={EmptyState}
         />
       ) : (
@@ -188,8 +274,8 @@ export default function ProfileScreen() {
           showsVerticalScrollIndicator={false}
           refreshControl={
             <RefreshControl
-              refreshing={refreshing}
-              onRefresh={onRefresh}
+              refreshing={commentsRefreshing}
+              onRefresh={refreshComments}
               tintColor={colors.primary}
             />
           }
@@ -198,9 +284,18 @@ export default function ProfileScreen() {
               onPress={() => router.push(`/post/${item.postId}` as any)}
               activeOpacity={0.8}
             >
-              <CommentCard comment={item} />
+              <CommentCard
+                comment={item}
+                isHugged={item.isHugged}
+                onHug={() => handleHugComment(item.id)}
+              />
             </TouchableOpacity>
           )}
+          onEndReached={handleCommentsEndReached}
+          onEndReachedThreshold={0.5}
+          ListFooterComponent={
+            <ListFooter isLoadingMore={commentsLoadingMore} />
+          }
           ListEmptyComponent={EmptyState}
         />
       )}

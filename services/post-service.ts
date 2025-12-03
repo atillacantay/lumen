@@ -171,15 +171,27 @@ export const getPostById = async (
   return null;
 };
 
+export interface GetPostsByUserResponse {
+  posts: Post[];
+  lastDoc: DocumentSnapshot | null;
+}
+
 export const getPostsByUser = async (
   authorId: string,
-  currentUserId?: string
-): Promise<Post[]> => {
-  const q = query(
+  currentUserId?: string,
+  lastDoc?: DocumentSnapshot | null,
+  pageSize: number = PAGE_SIZE
+): Promise<GetPostsByUserResponse> => {
+  let q = query(
     collection(db, POSTS_COLLECTION),
     where("authorId", "==", authorId),
-    orderBy("createdAt", "desc")
+    orderBy("createdAt", "desc"),
+    limit(pageSize)
   );
+
+  if (lastDoc) {
+    q = query(q, startAfter(lastDoc));
+  }
 
   const snapshot = await getDocs(q);
   const postIds = snapshot.docs.map((d) => d.id);
@@ -187,9 +199,12 @@ export const getPostsByUser = async (
   const userHuggedIds = await getUserHuggedPostIds(currentUserId);
   const huggedSet = filterHuggedPosts(postIds, userHuggedIds);
 
-  return snapshot.docs.map((docSnap) =>
+  const posts = snapshot.docs.map((docSnap) =>
     convertToPost(docSnap, huggedSet.has(docSnap.id))
   );
+  const newLastDoc = snapshot.docs[snapshot.docs.length - 1] || null;
+
+  return { posts, lastDoc: newLastDoc };
 };
 
 export const toggleHug = async (

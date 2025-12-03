@@ -1,14 +1,16 @@
+import { ListFooter } from "@/components/ListFooter";
 import { PostCard } from "@/components/PostCard";
 import { PostSkeleton } from "@/components/skeletons";
 import { BorderRadius, Colors, FontSize, Spacing } from "@/constants/theme";
 import { useCategories } from "@/context/CategoryContext";
 import { useUser } from "@/context/UserContext";
 import { useColorScheme } from "@/hooks/use-color-scheme";
+import { useInfiniteList } from "@/hooks/use-infinite-list";
 import { getPosts, toggleHug } from "@/services/post-service";
 import { Post } from "@/types";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import {
   FlatList,
   RefreshControl,
@@ -19,6 +21,11 @@ import {
   View,
 } from "react-native";
 
+interface FetchParams {
+  categoryId: string | null;
+  userId?: string;
+}
+
 export default function ExploreScreen() {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? "light"];
@@ -26,15 +33,55 @@ export default function ExploreScreen() {
   const { categories, getCategoryById } = useCategories();
   const { user } = useUser();
 
-  const [posts, setPosts] = useState<Post[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [refreshing, setRefreshing] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
 
   const selectedCategoryData = selectedCategory
     ? getCategoryById(selectedCategory)
     : null;
+
+  // Memoize params to prevent unnecessary refetches
+  const params = useMemo<FetchParams>(
+    () => ({ categoryId: selectedCategory, userId: user?.id }),
+    [selectedCategory, user?.id]
+  );
+
+  // Fetch function for infinite list
+  const fetchPosts = useCallback(
+    async (cursor: unknown | null, { categoryId, userId }: FetchParams) => {
+      if (!categoryId) {
+        return { items: [], nextCursor: null };
+      }
+      const result = await getPosts(
+        cursor as any,
+        categoryId,
+        "newest",
+        20,
+        userId
+      );
+      return {
+        items: result.posts,
+        nextCursor: result.lastDoc,
+      };
+    },
+    []
+  );
+
+  const {
+    items: posts,
+    isLoading,
+    isLoadingMore,
+    isRefreshing,
+    hasMore,
+    loadMore,
+    refresh,
+    updateItem,
+  } = useInfiniteList<Post, FetchParams>({
+    fetchFn: fetchPosts,
+    params,
+    pageSize: 20,
+    enabled: !!selectedCategory,
+  });
 
   // Filter posts by search
   const filteredPosts = posts.filter((post) => {
@@ -46,71 +93,24 @@ export default function ExploreScreen() {
     );
   });
 
-  // Fetch posts when category changes
-  useEffect(() => {
-    if (!selectedCategory) {
-      setPosts([]);
-      return;
-    }
-
-    const fetchPosts = async () => {
-      setIsLoading(true);
-      try {
-        const result = await getPosts(
-          undefined,
-          selectedCategory,
-          "newest",
-          undefined,
-          user?.id
-        );
-        setPosts(result.posts);
-      } catch (error) {
-        console.error("Failed to load posts:", error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchPosts();
-  }, [selectedCategory, user?.id]);
-
-  const onRefresh = async () => {
-    if (!selectedCategory) return;
-    setRefreshing(true);
-    try {
-      const result = await getPosts(
-        undefined,
-        selectedCategory,
-        "newest",
-        undefined,
-        user?.id
-      );
-      setPosts(result.posts);
-    } catch (error) {
-      console.error("Refresh error:", error);
-    } finally {
-      setRefreshing(false);
-    }
-  };
-
   const handleHug = async (postId: string) => {
     if (!user) return;
 
     try {
       const nowHugged = await toggleHug(postId, user.id);
-      setPosts((prev) =>
-        prev.map((p) =>
-          p.id === postId
-            ? {
-                ...p,
-                isHugged: nowHugged,
-                hugsCount: p.hugsCount + (nowHugged ? 1 : -1),
-              }
-            : p
-        )
-      );
+      updateItem(postId, (post) => ({
+        ...post,
+        isHugged: nowHugged,
+        hugsCount: post.hugsCount + (nowHugged ? 1 : -1),
+      }));
     } catch (error) {
       console.error("Hug error:", error);
+    }
+  };
+
+  const handleEndReached = () => {
+    if (hasMore && !isLoadingMore && !searchQuery) {
+      loadMore();
     }
   };
 
@@ -215,8 +215,8 @@ export default function ExploreScreen() {
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
+            refreshing={isRefreshing}
+            onRefresh={refresh}
             tintColor={selectedCategoryData?.color || colors.primary}
           />
         }
@@ -228,6 +228,9 @@ export default function ExploreScreen() {
             onHug={() => handleHug(item.id)}
           />
         )}
+        onEndReached={handleEndReached}
+        onEndReachedThreshold={0.5}
+        ListFooterComponent={<ListFooter isLoadingMore={isLoadingMore} />}
         ListEmptyComponent={() =>
           isLoading ? (
             <PostSkeleton count={3} />

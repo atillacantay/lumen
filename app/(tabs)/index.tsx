@@ -1,13 +1,15 @@
+import { ListFooter } from "@/components/ListFooter";
 import { PostCard } from "@/components/PostCard";
 import { PostSkeleton } from "@/components/skeletons";
 import { BorderRadius, Colors, FontSize, Spacing } from "@/constants/theme";
 import { useUser } from "@/context/UserContext";
 import { useColorScheme } from "@/hooks/use-color-scheme";
+import { useInfiniteList } from "@/hooks/use-infinite-list";
 import { getPosts, SortOption, toggleHug } from "@/services/post-service";
 import { Post } from "@/types";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import {
   FlatList,
   RefreshControl,
@@ -23,76 +25,77 @@ const SORT_OPTIONS: { key: SortOption; label: string; icon: string }[] = [
   { key: "mostComments", label: "En Çok Yorum", icon: "chatbubble" },
 ];
 
+interface FetchParams {
+  sortBy: SortOption;
+  userId?: string;
+}
+
 export default function HomeScreen() {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? "light"];
   const router = useRouter();
   const { user, isLoading: userLoading } = useUser();
 
-  const [posts, setPosts] = useState<Post[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
   const [sortBy, setSortBy] = useState<SortOption>("newest");
 
-  // Fetch posts when sortBy changes
-  useEffect(() => {
-    const fetchPosts = async () => {
-      setIsLoading(true);
-      try {
-        const result = await getPosts(
-          undefined,
-          undefined,
-          sortBy,
-          undefined,
-          user?.id
-        );
-        setPosts(result.posts);
-      } catch (error) {
-        console.error("Failed to load posts:", error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
+  // Memoize params to prevent unnecessary refetches
+  const params = useMemo<FetchParams>(
+    () => ({ sortBy, userId: user?.id }),
+    [sortBy, user?.id]
+  );
 
-    fetchPosts();
-  }, [sortBy, user?.id]);
-
-  const onRefresh = async () => {
-    setRefreshing(true);
-    try {
+  // Fetch function for infinite list
+  const fetchPosts = useCallback(
+    async (cursor: unknown | null, { sortBy, userId }: FetchParams) => {
       const result = await getPosts(
-        undefined,
+        cursor as any,
         undefined,
         sortBy,
-        undefined,
-        user?.id
+        20,
+        userId
       );
-      setPosts(result.posts);
-    } catch (error) {
-      console.error("Refresh error:", error);
-    } finally {
-      setRefreshing(false);
-    }
-  };
+      return {
+        items: result.posts,
+        nextCursor: result.lastDoc,
+      };
+    },
+    []
+  );
+
+  const {
+    items: posts,
+    isLoading,
+    isLoadingMore,
+    isRefreshing,
+    hasMore,
+    loadMore,
+    refresh,
+    updateItem,
+  } = useInfiniteList<Post, FetchParams>({
+    fetchFn: fetchPosts,
+    params,
+    pageSize: 20,
+    enabled: !userLoading,
+  });
 
   const handleHug = async (postId: string) => {
     if (!user) return;
 
     try {
       const nowHugged = await toggleHug(postId, user.id);
-      setPosts((prev) =>
-        prev.map((p) =>
-          p.id === postId
-            ? {
-                ...p,
-                isHugged: nowHugged,
-                hugsCount: p.hugsCount + (nowHugged ? 1 : -1),
-              }
-            : p
-        )
-      );
+      updateItem(postId, (post) => ({
+        ...post,
+        isHugged: nowHugged,
+        hugsCount: post.hugsCount + (nowHugged ? 1 : -1),
+      }));
     } catch (error) {
       console.error("Hug error:", error);
+    }
+  };
+
+  const handleEndReached = () => {
+    if (hasMore && !isLoadingMore) {
+      loadMore();
     }
   };
 
@@ -180,8 +183,8 @@ export default function HomeScreen() {
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
+            refreshing={isRefreshing}
+            onRefresh={refresh}
             tintColor={colors.primary}
           />
         }
@@ -192,6 +195,9 @@ export default function HomeScreen() {
             onHug={() => handleHug(item.id)}
           />
         )}
+        onEndReached={handleEndReached}
+        onEndReachedThreshold={0.5}
+        ListFooterComponent={<ListFooter isLoadingMore={isLoadingMore} />}
         ListEmptyComponent={() => (
           <View style={styles.emptyContainer}>
             <Text style={styles.emptyIcon}>🌙</Text>

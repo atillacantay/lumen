@@ -9,9 +9,11 @@ import {
   getDoc,
   getDocs,
   increment,
+  limit,
   orderBy,
   query,
   setDoc,
+  startAfter,
   Timestamp,
   updateDoc,
   where,
@@ -132,15 +134,29 @@ export const getCommentsByPost = async (
   );
 };
 
+export interface GetCommentsByUserResponse {
+  comments: Comment[];
+  lastDoc: DocumentSnapshot | null;
+}
+
+const COMMENTS_PAGE_SIZE = 20;
+
 export const getCommentsByUser = async (
   authorId: string,
-  currentUserId?: string
-): Promise<Comment[]> => {
-  const q = query(
+  currentUserId?: string,
+  lastDoc?: DocumentSnapshot | null,
+  pageSize: number = COMMENTS_PAGE_SIZE
+): Promise<GetCommentsByUserResponse> => {
+  let q = query(
     collection(db, COMMENTS_COLLECTION),
     where("authorId", "==", authorId),
-    orderBy("createdAt", "desc")
+    orderBy("createdAt", "desc"),
+    limit(pageSize)
   );
+
+  if (lastDoc) {
+    q = query(q, startAfter(lastDoc));
+  }
 
   const snapshot = await getDocs(q);
   const commentIds = snapshot.docs.map((d) => d.id);
@@ -148,9 +164,12 @@ export const getCommentsByUser = async (
   const userHuggedIds = await getUserHuggedCommentIds(currentUserId);
   const huggedSet = filterHuggedComments(commentIds, userHuggedIds);
 
-  return snapshot.docs.map((docSnap) =>
+  const comments = snapshot.docs.map((docSnap) =>
     convertToComment(docSnap, huggedSet.has(docSnap.id))
   );
+  const newLastDoc = snapshot.docs[snapshot.docs.length - 1] || null;
+
+  return { comments, lastDoc: newLastDoc };
 };
 
 export const toggleCommentHug = async (
