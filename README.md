@@ -1,50 +1,54 @@
-# Welcome to your Expo app 👋
+# 🌙 Lumen - Anonymous Venting Platform
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+A mobile application where people can anonymously share their troubles and support each other through difficult times.
 
-## Get started
+## 📱 Features
 
-1. Install dependencies
+- **Anonymous Sharing**: Hide your identity with automatically generated nicknames
+- **Category System**: Relationships, Family, Work/Career, School, Financial, Health, Loneliness, Anxiety/Stress, Other
+- **Hug System**: Instead of "likes", users can send supportive "hugs" 🤗
+- **Commenting**: Offer support and comfort to others' troubles
+- **Image Upload**: Free image hosting via Cloudinary
+- **Category Filtering**: Easily find topics you're interested in
+- **Search**: Search through posts
 
-   ```bash
-   npm install
-   ```
+## 🛠️ Tech Stack
 
-2. Start the app
+- **Frontend**: React Native + Expo
+- **Database**: Firebase Firestore
+- **Image Hosting**: Cloudinary (Free tier)
+- **Navigation**: Expo Router
 
-   ```bash
-   npx expo start
-   ```
+## 📁 Project Structure
 
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
-
-```bash
-npm run reset-project
+```
+project-lumen/
+├── app/                    # Pages (Expo Router)
+│   ├── (tabs)/            # Tab navigation
+│   │   ├── index.tsx      # Home (Feed)
+│   │   ├── explore.tsx    # Explore
+│   │   └── profile.tsx    # Profile
+│   ├── create-post.tsx    # New post
+│   └── post/[id].tsx      # Post detail
+├── components/            # UI Components
+├── config/               # Firebase & Cloudinary config
+├── constants/            # Categories, Theme
+├── context/              # User Context
+├── services/             # Firebase services
+└── types/                # TypeScript types
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+## 🎨 Color Palette
 
-## Learn more
+| Theme | Primary | Secondary | Hug     |
+| ----- | ------- | --------- | ------- |
+| Light | #6C5CE7 | #00B894   | #FF7675 |
+| Dark  | #A29BFE | #55EFC4   | #FF7675 |
 
-To learn more about developing your project with Expo, look at the following resources:
+## 📝 Roadmap
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
-
-## Join the community
-
-Join our community of developers creating universal apps.
-
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+- [ ] Push Notifications
+- [ ] Report/Flag system
+- [ ] Admin panel
+- [ ] More categories
+- [ ] Bookmarks/Favorites
