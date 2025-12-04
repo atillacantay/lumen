@@ -14,8 +14,9 @@ import {
 } from "@/services/comment-service";
 import { getPostsByUser, toggleHug } from "@/services/post-service";
 import { Comment, Post } from "@/types";
+import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import React, { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import {
   FlatList,
   RefreshControl,
@@ -226,6 +227,15 @@ export default function ProfileScreen() {
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Profile Header */}
       <View style={[styles.header, { backgroundColor: colors.surface }]}>
+        {/* Settings Button */}
+        <TouchableOpacity
+          style={styles.settingsButton}
+          onPress={() => router.push("/settings" as any)}
+          activeOpacity={0.7}
+        >
+          <Ionicons name="settings-outline" size={24} color={colors.text} />
+        </TouchableOpacity>
+
         <View style={[styles.avatar, { backgroundColor: colors.primary }]}>
           <Text style={styles.avatarText}>
             {user?.anonymousName.charAt(0).toUpperCase()}
@@ -347,6 +357,14 @@ const styles = StyleSheet.create({
     alignItems: "center",
     borderBottomLeftRadius: BorderRadius.xl,
     borderBottomRightRadius: BorderRadius.xl,
+    position: "relative",
+  },
+  settingsButton: {
+    position: "absolute",
+    top: 60,
+    right: Spacing.md,
+    padding: Spacing.xs,
+    zIndex: 1,
   },
   avatar: {
     width: 80,

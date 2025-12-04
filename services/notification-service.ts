@@ -1,4 +1,5 @@
 import { db } from "@/config/firebase";
+import { isNotificationEnabled } from "@/services/settings-service";
 import Constants from "expo-constants";
 import * as Device from "expo-device";
 import * as Notifications from "expo-notifications";
@@ -21,7 +22,6 @@ export interface NotificationData {
 // Configure how notifications are handled when app is in foreground
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
-    shouldShowAlert: true,
     shouldPlaySound: true,
     shouldSetBadge: true,
     shouldShowBanner: true,
@@ -183,6 +183,10 @@ export async function notifyPostHug(
   // Don't notify if user hugged their own post
   if (postAuthorId === fromUserId) return;
 
+  // Check if user has enabled this notification type
+  const isEnabled = await isNotificationEnabled(postAuthorId, "postHug");
+  if (!isEnabled) return;
+
   const token = await getUserPushToken(postAuthorId);
   if (!token) return;
 
@@ -206,6 +210,10 @@ export async function notifyPostComment(
 ): Promise<void> {
   // Don't notify if user commented on their own post
   if (postAuthorId === fromUserId) return;
+
+  // Check if user has enabled this notification type
+  const isEnabled = await isNotificationEnabled(postAuthorId, "postComment");
+  if (!isEnabled) return;
 
   const token = await getUserPushToken(postAuthorId);
   if (!token) return;
@@ -231,6 +239,10 @@ export async function notifyCommentHug(
 ): Promise<void> {
   // Don't notify if user hugged their own comment
   if (commentAuthorId === fromUserId) return;
+
+  // Check if user has enabled this notification type
+  const isEnabled = await isNotificationEnabled(commentAuthorId, "commentHug");
+  if (!isEnabled) return;
 
   const token = await getUserPushToken(commentAuthorId);
   if (!token) return;

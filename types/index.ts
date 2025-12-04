@@ -51,3 +51,15 @@ export interface Category {
   order: number;
   isActive: boolean;
 }
+
+export interface NotificationPreferences {
+  postHug: boolean;
+  postComment: boolean;
+  commentHug: boolean;
+}
+
+export const defaultNotificationPreferences: NotificationPreferences = {
+  postHug: true,
+  postComment: true,
+  commentHug: true,
+};
