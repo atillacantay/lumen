@@ -2,6 +2,7 @@ import { CommentCard } from "@/components/CommentCard";
 import { ListFooter } from "@/components/ListFooter";
 import { PostCard } from "@/components/PostCard";
 import { ProfileSkeleton } from "@/components/skeletons";
+import { SortOption, SortPicker } from "@/components/SortPicker";
 import { Tab, Tabs } from "@/components/Tabs";
 import { BorderRadius, Colors, FontSize, Spacing } from "@/constants/theme";
 import { useUser } from "@/context/UserContext";
@@ -35,11 +36,13 @@ const emptyStates: Record<TabType, { emoji: string; text: string }> = {
 interface PostFetchParams {
   authorId: string;
   userId: string;
+  sortBy: SortOption;
 }
 
 interface CommentFetchParams {
   authorId: string;
   userId: string;
+  sortBy: SortOption;
 }
 
 export default function ProfileScreen() {
@@ -49,17 +52,32 @@ export default function ProfileScreen() {
   const { user, isLoading: userLoading } = useUser();
 
   const [activeTab, setActiveTab] = useState<TabType>("posts");
+  const [postsSortBy, setPostsSortBy] = useState<SortOption>("newest");
+  const [commentsSortBy, setCommentsSortBy] = useState<SortOption>("newest");
 
   // Posts infinite list
   const postParams = useMemo<PostFetchParams>(
-    () => ({ authorId: user?.id || "", userId: user?.id || "" }),
-    [user?.id]
+    () => ({
+      authorId: user?.id || "",
+      userId: user?.id || "",
+      sortBy: postsSortBy,
+    }),
+    [user?.id, postsSortBy]
   );
 
   const fetchPosts = useCallback(
-    async (cursor: unknown | null, { authorId, userId }: PostFetchParams) => {
+    async (
+      cursor: unknown | null,
+      { authorId, userId, sortBy }: PostFetchParams
+    ) => {
       if (!authorId) return { items: [], nextCursor: null };
-      const result = await getPostsByUser(authorId, userId, cursor as any, 20);
+      const result = await getPostsByUser(
+        authorId,
+        userId,
+        cursor as any,
+        20,
+        sortBy
+      );
       return { items: result.posts, nextCursor: result.lastDoc };
     },
     []
@@ -83,21 +101,26 @@ export default function ProfileScreen() {
 
   // Comments infinite list
   const commentParams = useMemo<CommentFetchParams>(
-    () => ({ authorId: user?.id || "", userId: user?.id || "" }),
-    [user?.id]
+    () => ({
+      authorId: user?.id || "",
+      userId: user?.id || "",
+      sortBy: commentsSortBy,
+    }),
+    [user?.id, commentsSortBy]
   );
 
   const fetchComments = useCallback(
     async (
       cursor: unknown | null,
-      { authorId, userId }: CommentFetchParams
+      { authorId, userId, sortBy }: CommentFetchParams
     ) => {
       if (!authorId) return { items: [], nextCursor: null };
       const result = await getCommentsByUser(
         authorId,
         userId,
         cursor as any,
-        20
+        20,
+        sortBy
       );
       return { items: result.comments, nextCursor: result.lastDoc };
     },
@@ -238,6 +261,12 @@ export default function ProfileScreen() {
         activeTab={activeTab}
         onTabChange={setActiveTab}
         showIcons={true}
+      />
+
+      {/* Sort Picker */}
+      <SortPicker
+        value={activeTab === "posts" ? postsSortBy : commentsSortBy}
+        onChange={activeTab === "posts" ? setPostsSortBy : setCommentsSortBy}
       />
 
       {/* Content */}

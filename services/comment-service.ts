@@ -141,16 +141,21 @@ export interface GetCommentsByUserResponse {
 
 const COMMENTS_PAGE_SIZE = 20;
 
+export type ProfileSortOption = "newest" | "oldest";
+
 export const getCommentsByUser = async (
   authorId: string,
   currentUserId?: string,
   lastDoc?: DocumentSnapshot | null,
-  pageSize: number = COMMENTS_PAGE_SIZE
+  pageSize: number = COMMENTS_PAGE_SIZE,
+  sortBy: ProfileSortOption = "newest"
 ): Promise<GetCommentsByUserResponse> => {
+  const sortDirection = sortBy === "newest" ? "desc" : "asc";
+
   let q = query(
     collection(db, COMMENTS_COLLECTION),
     where("authorId", "==", authorId),
-    orderBy("createdAt", "desc"),
+    orderBy("createdAt", sortDirection),
     limit(pageSize)
   );
 

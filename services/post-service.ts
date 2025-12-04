@@ -176,16 +176,21 @@ export interface GetPostsByUserResponse {
   lastDoc: DocumentSnapshot | null;
 }
 
+export type ProfileSortOption = "newest" | "oldest";
+
 export const getPostsByUser = async (
   authorId: string,
   currentUserId?: string,
   lastDoc?: DocumentSnapshot | null,
-  pageSize: number = PAGE_SIZE
+  pageSize: number = PAGE_SIZE,
+  sortBy: ProfileSortOption = "newest"
 ): Promise<GetPostsByUserResponse> => {
+  const sortDirection = sortBy === "newest" ? "desc" : "asc";
+
   let q = query(
     collection(db, POSTS_COLLECTION),
     where("authorId", "==", authorId),
-    orderBy("createdAt", "desc"),
+    orderBy("createdAt", sortDirection),
     limit(pageSize)
   );
 
