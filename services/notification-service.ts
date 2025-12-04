@@ -65,8 +65,6 @@ export async function registerForPushNotificationsAsync(): Promise<
       projectId,
     });
 
-    console.log("Expo push token:", tokenData);
-
     // Android needs a notification channel
     if (Platform.OS === "android") {
       await Notifications.setNotificationChannelAsync("default", {
