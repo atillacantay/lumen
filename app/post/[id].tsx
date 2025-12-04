@@ -29,6 +29,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function PostDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -37,6 +38,7 @@ export default function PostDetailScreen() {
   const router = useRouter();
   const { user } = useUser();
   const { getCategoryById } = useCategories();
+  const insets = useSafeAreaInsets();
 
   const [post, setPost] = useState<Post | null>(null);
   const [comments, setComments] = useState<Comment[]>([]);
@@ -283,7 +285,13 @@ export default function PostDetailScreen() {
 
         {/* Comment Input */}
         <View
-          style={[styles.inputContainer, { backgroundColor: colors.surface }]}
+          style={[
+            styles.inputContainer,
+            {
+              backgroundColor: colors.surface,
+              paddingBottom: Spacing.md + insets.bottom,
+            },
+          ]}
         >
           <TextInput
             style={[
