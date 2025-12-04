@@ -1,9 +1,10 @@
+import { ImageZoom } from "@/components/ImageZoom";
 import { BorderRadius, Colors, FontSize, Spacing } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { Category, Post } from "@/types";
 import { formatDistanceToNow } from "date-fns";
 import { tr } from "date-fns/locale";
-import { Image, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
 interface PostDetailCardProps {
   post: Post;
@@ -57,7 +58,7 @@ export function PostDetailCard({ post, category, onHug }: PostDetailCardProps) {
 
       {/* Image */}
       {post.imageUrl && (
-        <Image source={{ uri: post.imageUrl }} style={styles.postImage} />
+        <ImageZoom imageUrl={post.imageUrl} imageStyle={styles.postImage} />
       )}
 
       {/* Hug Button */}

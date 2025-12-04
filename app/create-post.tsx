@@ -51,7 +51,7 @@ export default function CreatePostScreen() {
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ["images"],
       allowsEditing: true,
-      aspect: [16, 9],
+      aspect: [9, 16],
       quality: 0.8,
     });
 
