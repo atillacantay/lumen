@@ -162,7 +162,7 @@ export default function ProfileScreen() {
   const handleHugPost = async (postId: string) => {
     if (!user) return;
     try {
-      const nowHugged = await toggleHug(postId, user.id);
+      const nowHugged = await toggleHug(postId, user.id, user.anonymousName);
       updatePost(postId, (post) => ({
         ...post,
         isHugged: nowHugged,
@@ -176,7 +176,11 @@ export default function ProfileScreen() {
   const handleHugComment = async (commentId: string) => {
     if (!user) return;
     try {
-      const nowHugged = await toggleCommentHug(commentId, user.id);
+      const nowHugged = await toggleCommentHug(
+        commentId,
+        user.id,
+        user.anonymousName
+      );
       updateComment(commentId, (comment) => ({
         ...comment,
         isHugged: nowHugged,

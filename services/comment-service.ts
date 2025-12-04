@@ -1,4 +1,8 @@
 import { db } from "@/config/firebase";
+import {
+  notifyCommentHug,
+  notifyPostComment,
+} from "@/services/notification-service";
 import { Comment } from "@/types";
 import {
   addDoc,
@@ -91,6 +95,18 @@ export const createComment = async (
   const postRef = doc(db, POSTS_COLLECTION, input.postId);
   await updateDoc(postRef, { commentsCount: increment(1) });
 
+  // Send push notification to post author
+  const postSnap = await getDoc(postRef);
+  if (postSnap.exists()) {
+    const postData = postSnap.data();
+    notifyPostComment(
+      postData.authorId,
+      input.authorId,
+      input.authorName,
+      input.postId
+    );
+  }
+
   return {
     id: docRef.id,
     ...input,
@@ -179,7 +195,8 @@ export const getCommentsByUser = async (
 
 export const toggleCommentHug = async (
   commentId: string,
-  userId: string
+  userId: string,
+  userName: string
 ): Promise<boolean> => {
   const hugId = `${userId}_${commentId}`;
   const hugRef = doc(db, COMMENT_HUGS_COLLECTION, hugId);
@@ -198,6 +215,20 @@ export const toggleCommentHug = async (
       createdAt: Timestamp.now(),
     });
     await updateDoc(commentRef, { hugsCount: increment(1) });
+
+    // Send push notification to comment author
+    const commentSnap = await getDoc(commentRef);
+    if (commentSnap.exists()) {
+      const commentData = commentSnap.data();
+      notifyCommentHug(
+        commentData.authorId,
+        userId,
+        userName,
+        commentData.postId,
+        commentId
+      );
+    }
+
     return true;
   }
 };

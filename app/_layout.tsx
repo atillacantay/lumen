@@ -1,4 +1,5 @@
 import { CategoryProvider } from "@/context/CategoryContext";
+import { NotificationProvider } from "@/context/NotificationContext";
 import { UserProvider } from "@/context/UserContext";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import {
@@ -25,33 +26,35 @@ export default function RootLayout() {
 
   return (
     <UserProvider>
-      <CategoryProvider>
-        <ThemeProvider
-          value={colorScheme === "dark" ? DarkTheme : DefaultTheme}
-        >
-          <Stack>
-            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-            <Stack.Screen
-              name="create-post"
-              options={{
-                presentation: "modal",
-                headerShown: false,
-              }}
-            />
-            <Stack.Screen
-              name="post/[id]"
-              options={{
-                headerShown: false,
-              }}
-            />
-            <Stack.Screen
-              name="modal"
-              options={{ presentation: "modal", title: "Modal" }}
-            />
-          </Stack>
-          <StatusBar style="auto" />
-        </ThemeProvider>
-      </CategoryProvider>
+      <NotificationProvider>
+        <CategoryProvider>
+          <ThemeProvider
+            value={colorScheme === "dark" ? DarkTheme : DefaultTheme}
+          >
+            <Stack>
+              <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+              <Stack.Screen
+                name="create-post"
+                options={{
+                  presentation: "modal",
+                  headerShown: false,
+                }}
+              />
+              <Stack.Screen
+                name="post/[id]"
+                options={{
+                  headerShown: false,
+                }}
+              />
+              <Stack.Screen
+                name="modal"
+                options={{ presentation: "modal", title: "Modal" }}
+              />
+            </Stack>
+            <StatusBar style="auto" />
+          </ThemeProvider>
+        </CategoryProvider>
+      </NotificationProvider>
     </UserProvider>
   );
 }

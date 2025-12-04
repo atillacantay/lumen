@@ -82,7 +82,7 @@ export default function HomeScreen() {
     if (!user) return;
 
     try {
-      const nowHugged = await toggleHug(postId, user.id);
+      const nowHugged = await toggleHug(postId, user.id, user.anonymousName);
       updateItem(postId, (post) => ({
         ...post,
         isHugged: nowHugged,

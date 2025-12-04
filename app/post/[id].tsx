@@ -71,7 +71,7 @@ export default function PostDetailScreen() {
     if (!user || !post) return;
 
     try {
-      const nowHugged = await toggleHug(post.id, user.id);
+      const nowHugged = await toggleHug(post.id, user.id, user.anonymousName);
       setPost((prev) =>
         prev
           ? {
@@ -90,7 +90,11 @@ export default function PostDetailScreen() {
     if (!user) return;
 
     try {
-      const nowHugged = await toggleCommentHug(commentId, user.id);
+      const nowHugged = await toggleCommentHug(
+        commentId,
+        user.id,
+        user.anonymousName
+      );
 
       setComments((prev) =>
         prev.map((c) =>

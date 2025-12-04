@@ -1,8 +1,13 @@
+import {
+  registerForPushNotificationsAsync,
+  savePushToken,
+} from "@/services/notification-service";
 import { getOrCreateUser } from "@/services/user-service";
 import { User } from "@/types";
 import React, {
   createContext,
   ReactNode,
+  useCallback,
   useContext,
   useEffect,
   useState,
@@ -28,20 +33,26 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    initUser();
-  }, []);
-
-  const initUser = async () => {
+  const initUser = useCallback(async () => {
     try {
       const currentUser = await getOrCreateUser();
       setUser(currentUser);
+
+      // Register for push notifications after user is created
+      const token = await registerForPushNotificationsAsync();
+      if (token) {
+        await savePushToken(currentUser.id, token);
+      }
     } catch (error) {
       console.error("Failed to create user:", error);
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    initUser();
+  }, [initUser]);
 
   return (
     <UserContext.Provider value={{ user, isLoading }}>

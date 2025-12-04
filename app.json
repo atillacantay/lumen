@@ -18,8 +18,8 @@
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
-      "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "edgeToEdgeEnabled": false,
+      "package": "com.anonymous.projectlumen"
     },
     "web": {
       "output": "static",
@@ -38,11 +38,25 @@
             "backgroundColor": "#000000"
           }
         }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/icon.png",
+          "color": "#7C3AED"
+        }
       ]
     ],
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "1ebbcc52-fc30-4a25-ae99-a85aaf4979d1"
+      }
+    },
+    "owner": "dertortagim"
   }
 }

@@ -1,4 +1,5 @@
 import { db } from "@/config/firebase";
+import { notifyPostHug } from "@/services/notification-service";
 import { Post } from "@/types";
 import {
   addDoc,
@@ -214,7 +215,8 @@ export const getPostsByUser = async (
 
 export const toggleHug = async (
   postId: string,
-  userId: string
+  userId: string,
+  userName: string
 ): Promise<boolean> => {
   const hugId = `${userId}_${postId}`;
   const hugRef = doc(db, HUGS_COLLECTION, hugId);
@@ -233,6 +235,14 @@ export const toggleHug = async (
       createdAt: Timestamp.now(),
     });
     await updateDoc(postRef, { hugsCount: increment(1) });
+
+    // Send push notification to post author
+    const postSnap = await getDoc(postRef);
+    if (postSnap.exists()) {
+      const postData = postSnap.data();
+      notifyPostHug(postData.authorId, userId, userName, postId);
+    }
+
     return true;
   }
 };
