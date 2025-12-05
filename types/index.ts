@@ -1,3 +1,5 @@
+import { Ionicons } from "@expo/vector-icons";
+
 export interface Post {
   id: string;
   title: string;
@@ -63,3 +65,10 @@ export const defaultNotificationPreferences: NotificationPreferences = {
   postComment: true,
   commentHug: true,
 };
+
+export interface NotificationItem {
+  id: keyof NotificationPreferences;
+  title: string;
+  description: string;
+  icon: keyof typeof Ionicons.glyphMap;
+}

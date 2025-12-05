@@ -1,4 +1,9 @@
-import { BorderRadius, Colors, FontSize, Spacing } from "@/constants/theme";
+import {
+  NotificationInfoBanner,
+  NotificationSettingsHeader,
+  NotificationSettingsList,
+} from "@/components/settings";
+import { Colors, Spacing } from "@/constants/theme";
 import { useUser } from "@/context/UserContext";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import {
@@ -7,27 +12,18 @@ import {
 } from "@/services/settings-service";
 import { NotificationPreferences } from "@/types";
 import { Ionicons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
-import {
-  ActivityIndicator,
-  ScrollView,
-  StyleSheet,
-  Switch,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { ActivityIndicator, ScrollView, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-interface NotificationSettingItem {
+interface NotificationItem {
   id: keyof NotificationPreferences;
   title: string;
   description: string;
   icon: keyof typeof Ionicons.glyphMap;
 }
 
-const notificationSettings: NotificationSettingItem[] = [
+const notificationSettings: NotificationItem[] = [
   {
     id: "postHug",
     title: "Gönderi Kucaklamaları",
@@ -51,7 +47,6 @@ const notificationSettings: NotificationSettingItem[] = [
 export default function NotificationSettingsScreen() {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? "light"];
-  const router = useRouter();
   const insets = useSafeAreaInsets();
   const { user } = useUser();
 
@@ -65,7 +60,8 @@ export default function NotificationSettingsScreen() {
 
   useEffect(() => {
     loadPreferences();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]);
 
   const loadPreferences = async () => {
     if (!user) return;
@@ -100,30 +96,11 @@ export default function NotificationSettingsScreen() {
     }
   };
 
-  const handleBack = () => {
-    router.back();
-  };
-
+  // Loading state
   if (isLoading) {
     return (
       <View style={[styles.container, { backgroundColor: colors.background }]}>
-        <View
-          style={[
-            styles.header,
-            {
-              backgroundColor: colors.surface,
-              paddingTop: insets.top + Spacing.sm,
-            },
-          ]}
-        >
-          <TouchableOpacity onPress={handleBack} style={styles.backButton}>
-            <Ionicons name="arrow-back" size={24} color={colors.text} />
-          </TouchableOpacity>
-          <Text style={[styles.headerTitle, { color: colors.text }]}>
-            Bildirimler
-          </Text>
-          <View style={styles.placeholder} />
-        </View>
+        <NotificationSettingsHeader topInset={insets.top} />
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={colors.primary} />
         </View>
@@ -134,89 +111,24 @@ export default function NotificationSettingsScreen() {
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Header */}
-      <View
-        style={[
-          styles.header,
-          {
-            backgroundColor: colors.surface,
-            paddingTop: insets.top + Spacing.sm,
-          },
-        ]}
-      >
-        <TouchableOpacity onPress={handleBack} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color={colors.text} />
-        </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: colors.text }]}>
-          Bildirimler
-        </Text>
-        <View style={styles.placeholder} />
-      </View>
+      <NotificationSettingsHeader topInset={insets.top} />
 
-      {/* Settings List */}
+      {/* Settings Content */}
       <ScrollView
         style={styles.content}
         contentContainerStyle={styles.contentContainer}
         showsVerticalScrollIndicator={false}
       >
         {/* Info Banner */}
-        <View
-          style={[styles.infoBanner, { backgroundColor: colors.primaryLight }]}
-        >
-          <Ionicons
-            name="information-circle"
-            size={20}
-            color={colors.primary}
-          />
-          <Text style={[styles.infoText, { color: colors.primary }]}>
-            Bildirim tercihlerini buradan yönetebilirsin
-          </Text>
-        </View>
+        <NotificationInfoBanner />
 
-        <View style={[styles.section, { backgroundColor: colors.surface }]}>
-          {notificationSettings.map((item, index) => (
-            <View
-              key={item.id}
-              style={[
-                styles.item,
-                index < notificationSettings.length - 1 && {
-                  borderBottomColor: colors.border,
-                  borderBottomWidth: 1,
-                },
-              ]}
-            >
-              <View
-                style={[
-                  styles.iconContainer,
-                  { backgroundColor: colors.primaryLight },
-                ]}
-              >
-                <Ionicons name={item.icon} size={22} color={colors.primary} />
-              </View>
-              <View style={styles.itemContent}>
-                <Text style={[styles.itemTitle, { color: colors.text }]}>
-                  {item.title}
-                </Text>
-                <Text
-                  style={[
-                    styles.itemDescription,
-                    { color: colors.textSecondary },
-                  ]}
-                >
-                  {item.description}
-                </Text>
-              </View>
-              <Switch
-                value={preferences[item.id]}
-                onValueChange={() => handleToggle(item.id)}
-                trackColor={{ false: colors.border, true: colors.primaryLight }}
-                thumbColor={
-                  preferences[item.id] ? colors.primary : colors.textMuted
-                }
-                disabled={updating === item.id}
-              />
-            </View>
-          ))}
-        </View>
+        {/* Settings List */}
+        <NotificationSettingsList
+          items={notificationSettings}
+          preferences={preferences}
+          updatingKey={updating}
+          onToggle={handleToggle}
+        />
       </ScrollView>
     </View>
   );
@@ -226,73 +138,15 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: Spacing.md,
-    paddingBottom: Spacing.md,
-  },
-  backButton: {
-    padding: Spacing.xs,
-  },
-  headerTitle: {
-    fontSize: FontSize.lg,
-    fontWeight: "bold",
-  },
-  placeholder: {
-    width: 32,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-  },
   content: {
     flex: 1,
   },
   contentContainer: {
     padding: Spacing.md,
   },
-  infoBanner: {
-    flexDirection: "row",
-    alignItems: "center",
-    padding: Spacing.md,
-    borderRadius: BorderRadius.md,
-    marginBottom: Spacing.md,
-    gap: Spacing.sm,
-  },
-  infoText: {
+  loadingContainer: {
     flex: 1,
-    fontSize: FontSize.sm,
-  },
-  section: {
-    borderRadius: BorderRadius.lg,
-    overflow: "hidden",
-  },
-  item: {
-    flexDirection: "row",
-    alignItems: "center",
-    padding: Spacing.md,
-  },
-  iconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: BorderRadius.md,
     justifyContent: "center",
     alignItems: "center",
-    marginRight: Spacing.md,
-  },
-  itemContent: {
-    flex: 1,
-    marginRight: Spacing.sm,
-  },
-  itemTitle: {
-    fontSize: FontSize.md,
-    fontWeight: "600",
-  },
-  itemDescription: {
-    fontSize: FontSize.sm,
-    marginTop: 2,
   },
 });

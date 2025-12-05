@@ -1,3 +1,4 @@
+import { APP_CONFIG } from "@/config";
 import { BorderRadius, Colors, FontSize, Spacing } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { Ionicons } from "@expo/vector-icons";
@@ -125,7 +126,7 @@ export default function SettingsScreen() {
 
         {/* App Version */}
         <Text style={[styles.version, { color: colors.textMuted }]}>
-          Lumen v1.0.0
+          Lumen v{APP_CONFIG.version}
         </Text>
       </ScrollView>
     </View>
