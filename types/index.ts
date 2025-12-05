@@ -1,5 +1,14 @@
 import { Ionicons } from "@expo/vector-icons";
 
+export type TimeRange = "6h" | "24h" | "1w" | "1m" | "all";
+
+export interface TimeRangeOption {
+  key: TimeRange;
+  label: string;
+  icon: string;
+  hours: number | null; // null for "all"
+}
+
 export interface Post {
   id: string;
   title: string;

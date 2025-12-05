@@ -1,3 +1,4 @@
+import { FeedOptionsSheet } from "@/components/FeedOptionsSheet";
 import { ListFooter } from "@/components/ListFooter";
 import { PostCard } from "@/components/PostCard";
 import { PostSkeleton } from "@/components/skeletons";
@@ -6,10 +7,11 @@ import { useUser } from "@/context/UserContext";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useInfiniteList } from "@/hooks/use-infinite-list";
 import { getPosts, SortOption, toggleHug } from "@/services/post-service";
-import { Post } from "@/types";
+import { Post, TimeRange } from "@/types";
 import { Ionicons } from "@expo/vector-icons";
+import BottomSheet from "@gorhom/bottom-sheet";
 import { useRouter } from "expo-router";
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useMemo, useRef, useState } from "react";
 import {
   FlatList,
   RefreshControl,
@@ -19,15 +21,31 @@ import {
   View,
 } from "react-native";
 
-const SORT_OPTIONS: { key: SortOption; label: string; icon: string }[] = [
+const SORT_OPTIONS: {
+  key: SortOption;
+  label: string;
+  icon: keyof typeof Ionicons.glyphMap;
+}[] = [
   { key: "newest", label: "En Yeni", icon: "time-outline" },
   { key: "popular", label: "Popüler", icon: "heart" },
   { key: "mostComments", label: "En Çok Yorum", icon: "chatbubble" },
 ];
 
+const TIME_RANGE_OPTIONS: {
+  key: TimeRange;
+  label: string;
+}[] = [
+  { key: "6h", label: "Son 6 saat" },
+  { key: "24h", label: "Son 24 saat" },
+  { key: "1w", label: "Son 1 hafta" },
+  { key: "1m", label: "Son 1 ay" },
+  { key: "all", label: "Tüm zamanlar" },
+];
+
 interface FetchParams {
   sortBy: SortOption;
   userId?: string;
+  timeRange: TimeRange;
 }
 
 export default function HomeScreen() {
@@ -37,22 +55,37 @@ export default function HomeScreen() {
   const { user, isLoading: userLoading } = useUser();
 
   const [sortBy, setSortBy] = useState<SortOption>("newest");
+  const [timeRange, setTimeRange] = useState<TimeRange>("24h");
+
+  // Bottom Sheet ref
+  const feedOptionsRef = useRef<BottomSheet>(null);
+
+  // Time filter is not used when "Newest" is selected
+  const effectiveTimeRange = sortBy === "newest" ? "all" : timeRange;
+
+  // Get current sort option for display
+  const currentSortOption = SORT_OPTIONS.find((o) => o.key === sortBy);
+  const currentTimeOption = TIME_RANGE_OPTIONS.find((o) => o.key === timeRange);
 
   // Memoize params to prevent unnecessary refetches
   const params = useMemo<FetchParams>(
-    () => ({ sortBy, userId: user?.id }),
-    [sortBy, user?.id]
+    () => ({ sortBy, userId: user?.id, timeRange: effectiveTimeRange }),
+    [sortBy, user?.id, effectiveTimeRange]
   );
 
   // Fetch function for infinite list
   const fetchPosts = useCallback(
-    async (cursor: unknown | null, { sortBy, userId }: FetchParams) => {
+    async (
+      cursor: unknown | null,
+      { sortBy, userId, timeRange }: FetchParams
+    ) => {
       const result = await getPosts(
         cursor as any,
         undefined,
         sortBy,
         20,
-        userId
+        userId,
+        timeRange
       );
       return {
         items: result.posts,
@@ -112,10 +145,26 @@ export default function HomeScreen() {
           </View>
           <TouchableOpacity
             style={[styles.createButton, { backgroundColor: colors.primary }]}
-            onPress={() => router.push("/create-post")}
+            disabled
           >
             <Ionicons name="add" size={24} color="#FFF" />
           </TouchableOpacity>
+        </View>
+        <View
+          style={[styles.filterContainer, { backgroundColor: colors.surface }]}
+        >
+          <View
+            style={[
+              styles.filterButton,
+              { backgroundColor: colors.background, opacity: 0.5 },
+            ]}
+          >
+            <Ionicons name="time-outline" size={16} color={colors.primary} />
+            <Text style={[styles.filterButtonText, { color: colors.text }]}>
+              En Yeni
+            </Text>
+            <Ionicons name="chevron-down" size={16} color={colors.textMuted} />
+          </View>
         </View>
         <View style={styles.listContent}>
           <PostSkeleton count={3} />
@@ -142,37 +191,36 @@ export default function HomeScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* Sort Options */}
-      <View style={[styles.sortContainer, { backgroundColor: colors.surface }]}>
-        {SORT_OPTIONS.map((option) => (
-          <TouchableOpacity
-            key={option.key}
-            style={[
-              styles.sortButton,
-              sortBy === option.key && {
-                backgroundColor: colors.primary + "20",
-              },
-            ]}
-            onPress={() => setSortBy(option.key)}
-          >
-            <Ionicons
-              name={option.icon as any}
-              size={14}
-              color={sortBy === option.key ? colors.primary : colors.textMuted}
-            />
-            <Text
-              style={[
-                styles.sortText,
-                {
-                  color:
-                    sortBy === option.key ? colors.primary : colors.textMuted,
-                },
-              ]}
-            >
-              {option.label}
-            </Text>
-          </TouchableOpacity>
-        ))}
+      {/* Feed Options Button */}
+      <View
+        style={[styles.filterContainer, { backgroundColor: colors.surface }]}
+      >
+        <TouchableOpacity
+          style={[styles.filterButton, { backgroundColor: colors.background }]}
+          onPress={() => feedOptionsRef.current?.expand()}
+        >
+          <Ionicons
+            name={currentSortOption?.icon || "filter"}
+            size={16}
+            color={colors.primary}
+          />
+          <Text style={[styles.filterButtonText, { color: colors.text }]}>
+            {currentSortOption?.label}
+          </Text>
+          {sortBy !== "newest" && (
+            <>
+              <View
+                style={[styles.filterDot, { backgroundColor: colors.border }]}
+              />
+              <Text
+                style={[styles.filterButtonText, { color: colors.textMuted }]}
+              >
+                {currentTimeOption?.label}
+              </Text>
+            </>
+          )}
+          <Ionicons name="chevron-down" size={16} color={colors.textMuted} />
+        </TouchableOpacity>
       </View>
 
       {/* Posts */}
@@ -217,6 +265,15 @@ export default function HomeScreen() {
           </View>
         )}
       />
+
+      {/* Feed Options Bottom Sheet */}
+      <FeedOptionsSheet
+        ref={feedOptionsRef}
+        sortBy={sortBy}
+        timeRange={timeRange}
+        onSortChange={setSortBy}
+        onTimeRangeChange={setTimeRange}
+      />
     </View>
   );
 }
@@ -248,24 +305,29 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
-  // Sort
-  sortContainer: {
+  // Filter Button
+  filterContainer: {
     flexDirection: "row",
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.sm,
-    gap: Spacing.sm,
   },
-  sortButton: {
+  filterButton: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: Spacing.sm,
-    paddingVertical: Spacing.xs,
+    alignSelf: "flex-start",
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
     borderRadius: BorderRadius.full,
-    gap: 4,
+    gap: Spacing.xs,
   },
-  sortText: {
-    fontSize: FontSize.xs,
+  filterButtonText: {
+    fontSize: FontSize.sm,
     fontWeight: "500",
+  },
+  filterDot: {
+    width: 4,
+    height: 4,
+    borderRadius: 2,
   },
   // List
   listContent: {

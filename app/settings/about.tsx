@@ -1,3 +1,4 @@
+import { APP_CONFIG } from "@/config";
 import { BorderRadius, Colors, FontSize, Spacing } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { Ionicons } from "@expo/vector-icons";
@@ -56,7 +57,7 @@ export default function AboutScreen() {
           </View>
           <Text style={[styles.appName, { color: colors.text }]}>Lumen</Text>
           <Text style={[styles.appVersion, { color: colors.textSecondary }]}>
-            Versiyon 1.0.0
+            Versiyon {APP_CONFIG.version}
           </Text>
           <Text style={[styles.appTagline, { color: colors.textSecondary }]}>
             Dertleş, Rahatla

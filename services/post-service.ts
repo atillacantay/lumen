@@ -1,6 +1,7 @@
 import { db } from "@/config/firebase";
 import { notifyPostHug } from "@/services/notification-service";
-import { Post } from "@/types";
+import { Post, TimeRange } from "@/types";
+import { getTimeRangeThreshold } from "@/utils/time-range";
 import {
   addDoc,
   collection,
@@ -120,30 +121,42 @@ export const getPosts = async (
   categoryId?: string,
   sortBy: SortOption = "newest",
   pageSize: number = PAGE_SIZE,
-  userId?: string
+  userId?: string,
+  timeRange: TimeRange = "all"
 ): Promise<GetPostsResponse> => {
   const sortField = SORT_FIELDS[sortBy];
 
-  let q = query(
-    collection(db, POSTS_COLLECTION),
-    orderBy(sortField, "desc"),
-    limit(pageSize)
-  );
+  // Calculate time threshold using utility
+  const timeThreshold = getTimeRangeThreshold(timeRange);
+
+  // Build constraints array
+  const constraints = [];
 
   if (categoryId) {
-    q = query(
-      collection(db, POSTS_COLLECTION),
-      where("categoryId", "==", categoryId),
-      orderBy(sortField, "desc"),
-      limit(pageSize)
-    );
+    constraints.push(where("categoryId", "==", categoryId));
   }
+
+  if (timeThreshold) {
+    constraints.push(where("createdAt", ">=", timeThreshold));
+  }
+
+  constraints.push(orderBy(sortField, "desc"));
 
   if (lastDoc) {
-    q = query(q, startAfter(lastDoc));
+    constraints.push(startAfter(lastDoc));
   }
 
-  const snapshot = await getDocs(q);
+  constraints.push(limit(pageSize));
+
+  let q = query(collection(db, POSTS_COLLECTION), ...constraints);
+
+  let snapshot;
+  try {
+    snapshot = await getDocs(q);
+  } catch (error) {
+    console.error("Error fetching posts:", error);
+    throw error;
+  }
   const postIds = snapshot.docs.map((d) => d.id);
 
   // Get user's hugged posts in single query, then filter
