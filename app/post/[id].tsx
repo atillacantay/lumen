@@ -1,4 +1,5 @@
 import { CommentList } from "@/components/CommentList";
+import { CommentSortSheet } from "@/components/CommentSortSheet";
 import {
   CommentInput,
   PostDetailCard,
@@ -11,18 +12,21 @@ import { useCategories } from "@/context/CategoryContext";
 import { useUser } from "@/context/UserContext";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import {
+  CommentSortOption,
   createComment,
   getCommentsByPost,
   toggleCommentHug,
 } from "@/services/comment-service";
 import { getPostById, toggleHug } from "@/services/post-service";
 import { Comment, Post } from "@/types";
+import BottomSheet from "@gorhom/bottom-sheet";
 import { useLocalSearchParams } from "expo-router";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   Alert,
   KeyboardAvoidingView,
   Platform,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   View,
@@ -36,14 +40,17 @@ export default function PostDetailScreen() {
   const { user } = useUser();
   const { getCategoryById } = useCategories();
   const insets = useSafeAreaInsets();
+  const sortSheetRef = useRef<BottomSheet>(null);
 
   const [post, setPost] = useState<Post | null>(null);
   const [comments, setComments] = useState<Comment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [newComment, setNewComment] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [commentSortBy, setCommentSortBy] =
+    useState<CommentSortOption>("oldest");
 
-  // Fetch post and comments
   useEffect(() => {
     if (!id) return;
 
@@ -57,7 +64,7 @@ export default function PostDetailScreen() {
         setPost(fetchedPost);
         setComments(fetchedComments);
       } catch (error) {
-        console.error("Veri yüklenemedi:", error);
+        console.error("Failed to load data:", error);
       } finally {
         setIsLoading(false);
       }
@@ -81,7 +88,7 @@ export default function PostDetailScreen() {
           : null
       );
     } catch (error) {
-      console.error("Sarılma başarısız:", error);
+      console.error("Failed to toggle hug:", error);
     }
   };
 
@@ -107,7 +114,7 @@ export default function PostDetailScreen() {
         )
       );
     } catch (error) {
-      console.error("Yorum sarılma başarısız:", error);
+      console.error("Failed to toggle comment hug:", error);
     }
   };
 
@@ -131,6 +138,35 @@ export default function PostDetailScreen() {
       Alert.alert("Hata", "Yorum gönderilemedi.");
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleRefresh = async () => {
+    if (!id) return;
+
+    setRefreshing(true);
+    try {
+      const [fetchedPost, fetchedComments] = await Promise.all([
+        getPostById(id, user?.id),
+        getCommentsByPost(id, commentSortBy, user?.id),
+      ]);
+
+      setPost(fetchedPost);
+      setComments(fetchedComments);
+    } catch (error) {
+      console.error("Failed to refresh:", error);
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
+  const handleCommentSortChange = async (newSort: CommentSortOption) => {
+    setCommentSortBy(newSort);
+    try {
+      const sortedComments = await getCommentsByPost(id, newSort, user?.id);
+      setComments(sortedComments);
+    } catch (error) {
+      console.error("Yorumlar yüklenemedi:", error);
     }
   };
 
@@ -171,6 +207,13 @@ export default function PostDetailScreen() {
         <ScrollView
           style={styles.scrollView}
           contentContainerStyle={styles.scrollContent}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={handleRefresh}
+              tintColor={colors.primary}
+            />
+          }
         >
           {/* Post Card */}
           <PostDetailCard
@@ -184,8 +227,10 @@ export default function PostDetailScreen() {
             postId={post.id}
             comments={comments}
             userId={user?.id}
+            sortBy={commentSortBy}
             onHugComment={handleHugComment}
             onCommentsChange={setComments}
+            onOpenSortSheet={() => sortSheetRef.current?.expand()}
           />
         </ScrollView>
 
@@ -196,6 +241,13 @@ export default function PostDetailScreen() {
           onSubmit={handleSubmitComment}
           isSubmitting={submitting}
           bottomInset={insets.bottom}
+        />
+
+        {/* Comment Sort Sheet */}
+        <CommentSortSheet
+          ref={sortSheetRef}
+          sortBy={commentSortBy}
+          onSortChange={handleCommentSortChange}
         />
       </View>
     </KeyboardAvoidingView>

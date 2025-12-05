@@ -38,7 +38,7 @@ export default function RootLayout() {
                 <Stack.Screen
                   name="create-post"
                   options={{
-                    presentation: "card",
+                    presentation: "modal",
                     headerShown: false,
                   }}
                 />
