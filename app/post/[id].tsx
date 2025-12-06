@@ -12,6 +12,10 @@ import { useCategories } from "@/context/CategoryContext";
 import { useUser } from "@/context/UserContext";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import {
+  trackCommentHugged,
+  trackPostViewed,
+} from "@/services/analytics-service";
+import {
   CommentSortOption,
   getCommentsByPost,
   toggleCommentHug,
@@ -60,6 +64,15 @@ export default function PostDetailScreen() {
 
         setPost(fetchedPost);
         setComments(fetchedComments);
+
+        // Track post view
+        if (fetchedPost) {
+          trackPostViewed({
+            postId: fetchedPost.id,
+            authorId: fetchedPost.authorId,
+            category: fetchedPost.categoryId,
+          });
+        }
       } catch {
         // Silently fail
       } finally {
@@ -110,6 +123,14 @@ export default function PostDetailScreen() {
             : c
         )
       );
+
+      // Track comment hug
+      if (nowHugged) {
+        trackCommentHugged({
+          commentId,
+          postId: post?.id || "unknown",
+        });
+      }
     } catch {
       // Silently fail
     }

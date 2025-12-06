@@ -1,7 +1,9 @@
+import { APP_CONFIG } from "@/config";
 import { CategoryProvider } from "@/context/CategoryContext";
 import { NotificationProvider } from "@/context/NotificationContext";
 import { UserProvider } from "@/context/UserContext";
 import { useColorScheme } from "@/hooks/use-color-scheme";
+import { trackAppOpened } from "@/services/analytics-service";
 import {
   DarkTheme,
   DefaultTheme,
@@ -9,13 +11,19 @@ import {
 } from "@react-navigation/native";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
+import { useEffect } from "react";
 import { NativeModules } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import "react-native-reanimated";
+import { vexo } from "vexo-analytics";
 
 // Enable remote debugging in development
 if (__DEV__) {
   NativeModules.DevSettings?.setIsDebuggingRemotely?.(true);
+}
+
+if (!__DEV__) {
+  vexo(APP_CONFIG.vexoApiKey || "");
 }
 
 export const unstable_settings = {
@@ -24,6 +32,10 @@ export const unstable_settings = {
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
+
+  useEffect(() => {
+    trackAppOpened();
+  }, []);
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>

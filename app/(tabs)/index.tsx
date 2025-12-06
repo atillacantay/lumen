@@ -6,6 +6,10 @@ import { BorderRadius, Colors, FontSize, Spacing } from "@/constants/theme";
 import { useUser } from "@/context/UserContext";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useInfiniteList } from "@/hooks/use-infinite-list";
+import {
+  trackPostHugged,
+  trackSortChanged,
+} from "@/services/analytics-service";
 import { getPosts, SortOption, toggleHug } from "@/services/post-service";
 import { Post, TimeRange } from "@/types";
 import { Ionicons } from "@expo/vector-icons";
@@ -121,6 +125,16 @@ export default function HomeScreen() {
         isHugged: nowHugged,
         hugsCount: post.hugsCount + (nowHugged ? 1 : -1),
       }));
+
+      // Track analytics
+      if (nowHugged) {
+        const post = posts.find((p) => p.id === postId);
+        trackPostHugged({
+          postId,
+          authorId: post?.authorId || "unknown",
+          category: post?.categoryId || "unknown",
+        });
+      }
     } catch {
       // Silently fail
     }
@@ -271,7 +285,14 @@ export default function HomeScreen() {
         ref={feedOptionsRef}
         sortBy={sortBy}
         timeRange={timeRange}
-        onSortChange={setSortBy}
+        onSortChange={(newSort) => {
+          trackSortChanged({
+            newSort,
+            previousSort: sortBy,
+            screen: "Feed",
+          });
+          setSortBy(newSort);
+        }}
         onTimeRangeChange={setTimeRange}
       />
     </View>

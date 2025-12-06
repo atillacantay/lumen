@@ -2,6 +2,7 @@ import { BorderRadius, Colors, FontSize, Spacing } from "@/constants/theme";
 import { useCategories } from "@/context/CategoryContext";
 import { useUser } from "@/context/UserContext";
 import { useColorScheme } from "@/hooks/use-color-scheme";
+import { trackPostCreated } from "@/services/analytics-service";
 import { uploadImage } from "@/services/image-service";
 import { createPost } from "@/services/post-service";
 import { Ionicons } from "@expo/vector-icons";
@@ -69,13 +70,21 @@ export default function CreatePostScreen() {
         ? await uploadImage(imageUri)
         : undefined;
 
-      await createPost({
+      const createdPost = await createPost({
         title: title.trim(),
         content: content.trim(),
         categoryId,
         authorId: user.id,
         authorName: user.anonymousName,
         imageUrl: uploadedImageUrl ?? undefined,
+      });
+
+      // Track the post creation event
+      trackPostCreated({
+        postId: createdPost.id,
+        category: categoryId,
+        hasImage: !!uploadedImageUrl,
+        contentLength: content.trim().length,
       });
 
       Alert.alert("Başarılı", "Derdini paylaştın! 🤗", [

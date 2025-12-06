@@ -1,6 +1,7 @@
 import { BorderRadius, Colors, FontSize, Spacing } from "@/constants/theme";
 import { useUser } from "@/context/UserContext";
 import { useColorScheme } from "@/hooks/use-color-scheme";
+import { trackCommentCreated } from "@/services/analytics-service";
 import { createComment } from "@/services/comment-service";
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -35,11 +36,18 @@ export default function CommentScreen() {
 
     setIsSubmitting(true);
     try {
-      await createComment({
+      const createdComment = await createComment({
         postId,
         content: content.trim(),
         authorId: user.id,
         authorName: user.anonymousName,
+      });
+
+      // Track the comment creation event
+      trackCommentCreated({
+        commentId: createdComment.id,
+        postId: postId,
+        contentLength: content.trim().length,
       });
 
       Alert.alert("Başarılı", "Yorumun paylaşıldı! 🎉", [

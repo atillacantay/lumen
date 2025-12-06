@@ -1,6 +1,7 @@
 // App Configuration
 export const APP_CONFIG = {
   version: process.env.EXPO_PUBLIC_APP_VERSION,
+  vexoApiKey: process.env.EXPO_PUBLIC_VEXO_API_KEY,
 };
 
 // API Base URL - localhost for development, real URL for production
