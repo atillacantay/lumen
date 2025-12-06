@@ -20,7 +20,7 @@ import {
 } from "react-native";
 
 export default function CommentScreen() {
-  const { postId } = useLocalSearchParams<{ postId: string }>();
+  const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? "light"];
@@ -32,12 +32,12 @@ export default function CommentScreen() {
   const isDisabled = isSubmitting || !content.trim();
 
   const handleSubmit = async () => {
-    if (!content.trim() || !user || !postId) return;
+    if (!content.trim() || !user || !id) return;
 
     setIsSubmitting(true);
     try {
       const createdComment = await createComment({
-        postId,
+        postId: id,
         content: content.trim(),
         authorId: user.id,
         authorName: user.anonymousName,
@@ -46,7 +46,7 @@ export default function CommentScreen() {
       // Track the comment creation event
       trackCommentCreated({
         commentId: createdComment.id,
-        postId: postId,
+        postId: id,
         contentLength: content.trim().length,
       });
 

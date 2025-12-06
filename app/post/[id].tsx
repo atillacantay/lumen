@@ -231,17 +231,12 @@ export default function PostDetailScreen() {
 
         {/* Comment Input */}
         <CommentInput
-          value=""
-          onChangeText={() => {}}
-          onSubmit={() => {}}
-          onFocus={() => {
+          onPress={() => {
             if (id) {
               router.push(`/post/${id}/comment`);
             }
           }}
-          isSubmitting={false}
           bottomInset={insets.bottom}
-          editable={false}
         />
 
         {/* Comment Sort Sheet */}
