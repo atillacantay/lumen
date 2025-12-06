@@ -1,4 +1,7 @@
 import { FeedOptionsSheet } from "@/components/FeedOptionsSheet";
+import HomeEmptyState from "@/components/HomeEmptyState";
+import HomeFilters from "@/components/HomeFilters";
+import HomeHeader from "@/components/HomeHeader";
 import { ListFooter } from "@/components/ListFooter";
 import { PostCard } from "@/components/PostCard";
 import { PostSkeleton } from "@/components/skeletons";
@@ -17,14 +20,7 @@ import { Ionicons } from "@expo/vector-icons";
 import BottomSheet from "@gorhom/bottom-sheet";
 import { useRouter } from "expo-router";
 import React, { useCallback, useMemo, useRef, useState } from "react";
-import {
-  FlatList,
-  RefreshControl,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { FlatList, RefreshControl, StyleSheet, View } from "react-native";
 
 const SORT_OPTIONS: {
   key: SortOption;
@@ -151,36 +147,8 @@ export default function HomeScreen() {
   if (userLoading || isLoading) {
     return (
       <View style={[styles.container, { backgroundColor: colors.background }]}>
-        <View style={[styles.header, { backgroundColor: colors.surface }]}>
-          <View>
-            <Text style={[styles.logo, { color: colors.primary }]}>Lumen</Text>
-            <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-              Dertleş, Rahatla 🌙
-            </Text>
-          </View>
-          <TouchableOpacity
-            style={[styles.createButton, { backgroundColor: colors.primary }]}
-            disabled
-          >
-            <Ionicons name="add" size={24} color="#FFF" />
-          </TouchableOpacity>
-        </View>
-        <View
-          style={[styles.filterContainer, { backgroundColor: colors.surface }]}
-        >
-          <View
-            style={[
-              styles.filterButton,
-              { backgroundColor: colors.background, opacity: 0.5 },
-            ]}
-          >
-            <Ionicons name="time-outline" size={16} color={colors.primary} />
-            <Text style={[styles.filterButtonText, { color: colors.text }]}>
-              En Yeni
-            </Text>
-            <Ionicons name="chevron-down" size={16} color={colors.textMuted} />
-          </View>
-        </View>
+        <HomeHeader onCreatePress={() => {}} />
+        <HomeFilters sortLabel="En Yeni" isDisabled />
         <View style={styles.listContent}>
           <PostSkeleton count={3} />
         </View>
@@ -190,53 +158,12 @@ export default function HomeScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      {/* Header */}
-      <View style={[styles.header, { backgroundColor: colors.surface }]}>
-        <View>
-          <Text style={[styles.logo, { color: colors.primary }]}>Lumen</Text>
-          <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-            Dertleş, Rahatla 🌙
-          </Text>
-        </View>
-        <TouchableOpacity
-          style={[styles.createButton, { backgroundColor: colors.primary }]}
-          onPress={() => router.push("/create-post")}
-        >
-          <Ionicons name="add" size={24} color="#FFF" />
-        </TouchableOpacity>
-      </View>
-
-      {/* Feed Options Button */}
-      <View
-        style={[styles.filterContainer, { backgroundColor: colors.surface }]}
-      >
-        <TouchableOpacity
-          style={[styles.filterButton, { backgroundColor: colors.background }]}
-          onPress={() => feedOptionsRef.current?.expand()}
-        >
-          <Ionicons
-            name={currentSortOption?.icon || "filter"}
-            size={16}
-            color={colors.primary}
-          />
-          <Text style={[styles.filterButtonText, { color: colors.text }]}>
-            {currentSortOption?.label}
-          </Text>
-          {sortBy !== "newest" && (
-            <>
-              <View
-                style={[styles.filterDot, { backgroundColor: colors.border }]}
-              />
-              <Text
-                style={[styles.filterButtonText, { color: colors.textMuted }]}
-              >
-                {currentTimeOption?.label}
-              </Text>
-            </>
-          )}
-          <Ionicons name="chevron-down" size={16} color={colors.textMuted} />
-        </TouchableOpacity>
-      </View>
+      <HomeHeader onCreatePress={() => router.push("/create-post")} />
+      <HomeFilters
+        sortLabel={currentSortOption?.label || "En Yeni"}
+        timeLabel={sortBy !== "newest" ? currentTimeOption?.label : undefined}
+        onPress={() => feedOptionsRef.current?.expand()}
+      />
 
       {/* Posts */}
       <FlatList
@@ -265,22 +192,7 @@ export default function HomeScreen() {
         onEndReachedThreshold={0.5}
         ListFooterComponent={<ListFooter isLoadingMore={isLoadingMore} />}
         ListEmptyComponent={() => (
-          <View style={styles.emptyContainer}>
-            <Text style={styles.emptyIcon}>🌙</Text>
-            <Text style={[styles.emptyTitle, { color: colors.text }]}>
-              Henüz paylaşım yok
-            </Text>
-            <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
-              İlk paylaşımı sen yap!
-            </Text>
-            <TouchableOpacity
-              style={[styles.emptyButton, { backgroundColor: colors.primary }]}
-              onPress={() => router.push("/create-post")}
-            >
-              <Ionicons name="add" size={18} color="#FFF" />
-              <Text style={styles.emptyButtonText}>Paylaşım Yap</Text>
-            </TouchableOpacity>
-          </View>
+          <HomeEmptyState onCreate={() => router.push("/create-post")} />
         )}
       />
 
