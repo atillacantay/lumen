@@ -52,8 +52,7 @@ export const getCurrentUser = async (): Promise<User | null> => {
       };
     }
     return null;
-  } catch (error) {
-    console.error("Failed to get user:", error);
+  } catch {
     return null;
   }
 };

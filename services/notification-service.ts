@@ -37,7 +37,6 @@ export async function registerForPushNotificationsAsync(): Promise<
 > {
   // Push notifications don't work on emulators/simulators
   if (!Device.isDevice) {
-    console.log("Push notifications require a physical device");
     return null;
   }
 
@@ -51,7 +50,6 @@ export async function registerForPushNotificationsAsync(): Promise<
   }
 
   if (finalStatus !== "granted") {
-    console.log("Push notification permission not granted");
     return null;
   }
 
@@ -76,8 +74,7 @@ export async function registerForPushNotificationsAsync(): Promise<
     }
 
     return tokenData.data;
-  } catch (error) {
-    console.error("Error getting push token:", error);
+  } catch {
     return null;
   }
 }
@@ -95,8 +92,8 @@ export async function savePushToken(
       pushToken: token,
       pushTokenUpdatedAt: new Date().toISOString(),
     });
-  } catch (error) {
-    console.error("Error saving push token:", error);
+  } catch {
+    // Silently fail
   }
 }
 
@@ -112,8 +109,7 @@ export async function getUserPushToken(userId: string): Promise<string | null> {
       return userSnap.data()?.pushToken || null;
     }
     return null;
-  } catch (error) {
-    console.error("Error getting user push token:", error);
+  } catch {
     return null;
   }
 }
@@ -145,8 +141,8 @@ export async function sendPushNotification(
       },
       body: JSON.stringify(message),
     });
-  } catch (error) {
-    console.error("Error sending push notification:", error);
+  } catch {
+    // Silently fail
   }
 }
 

@@ -1,4 +1,5 @@
 import { CLOUDINARY_CONFIG } from "@/config";
+import { errorLogger } from "@/services/error-logger";
 
 export const uploadImage = async (imageUri: string): Promise<string | null> => {
   try {
@@ -25,11 +26,12 @@ export const uploadImage = async (imageUri: string): Promise<string | null> => {
     );
 
     const data = await response.json();
-    console.log("Cloudinary response:", data);
-
     return data.secure_url || null;
   } catch (error) {
-    console.error("Image upload error:", error);
+    await errorLogger.logError(error, {
+      action: "uploadImage",
+      screen: "CreatePost",
+    });
     return null;
   }
 };

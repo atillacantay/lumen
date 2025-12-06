@@ -1,4 +1,5 @@
 import { db } from "@/config/firebase";
+import { errorLogger } from "@/services/error-logger";
 import { notifyPostHug } from "@/services/notification-service";
 import { Post, TimeRange } from "@/types";
 import { sanitizePostInput } from "@/utils/sanitize";
@@ -81,50 +82,59 @@ const convertToPost = (docSnap: DocumentSnapshot, isHugged = false): Post => {
 };
 
 export const createPost = async (input: CreatePostInput): Promise<Post> => {
-  // Sanitize input to prevent XSS and invalid data
-  const sanitized = sanitizePostInput({
-    title: input.title,
-    content: input.content,
-    categoryId: input.categoryId,
-    authorName: input.authorName,
-    imageUrl: input.imageUrl,
-  });
+  try {
+    // Sanitize input to prevent XSS and invalid data
+    const sanitized = sanitizePostInput({
+      title: input.title,
+      content: input.content,
+      categoryId: input.categoryId,
+      authorName: input.authorName,
+      imageUrl: input.imageUrl,
+    });
 
-  if (!sanitized) {
-    throw new Error("Invalid post data");
+    if (!sanitized) {
+      throw new Error("Invalid post data");
+    }
+
+    const now = Timestamp.now();
+
+    const postData = {
+      title: sanitized.title,
+      content: sanitized.content,
+      categoryId: sanitized.categoryId,
+      authorId: input.authorId,
+      authorName: sanitized.authorName,
+      imageUrl: sanitized.imageUrl ?? null,
+      hugsCount: 0,
+      commentsCount: 0,
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    const docRef = await addDoc(collection(db, POSTS_COLLECTION), postData);
+
+    return {
+      id: docRef.id,
+      title: sanitized.title,
+      content: sanitized.content,
+      categoryId: sanitized.categoryId,
+      authorId: input.authorId,
+      authorName: sanitized.authorName,
+      imageUrl: sanitized.imageUrl,
+      hugsCount: 0,
+      commentsCount: 0,
+      isHugged: false,
+      createdAt: now.toDate(),
+      updatedAt: now.toDate(),
+    };
+  } catch (error) {
+    await errorLogger.logError(error, {
+      action: "createPost",
+      screen: "CreatePost",
+      categoryId: input.categoryId,
+    });
+    throw error;
   }
-
-  const now = Timestamp.now();
-
-  const postData = {
-    title: sanitized.title,
-    content: sanitized.content,
-    categoryId: sanitized.categoryId,
-    authorId: input.authorId,
-    authorName: sanitized.authorName,
-    imageUrl: sanitized.imageUrl ?? null,
-    hugsCount: 0,
-    commentsCount: 0,
-    createdAt: now,
-    updatedAt: now,
-  };
-
-  const docRef = await addDoc(collection(db, POSTS_COLLECTION), postData);
-
-  return {
-    id: docRef.id,
-    title: sanitized.title,
-    content: sanitized.content,
-    categoryId: sanitized.categoryId,
-    authorId: input.authorId,
-    authorName: sanitized.authorName,
-    imageUrl: sanitized.imageUrl,
-    hugsCount: 0,
-    commentsCount: 0,
-    isHugged: false,
-    createdAt: now.toDate(),
-    updatedAt: now.toDate(),
-  };
 };
 
 export type SortOption = "newest" | "popular" | "mostComments";
@@ -173,7 +183,13 @@ export const getPosts = async (
   try {
     snapshot = await getDocs(q);
   } catch (error) {
-    console.error("Error fetching posts:", error);
+    await errorLogger.logError(error, {
+      action: "getPosts",
+      screen: "Feed",
+      sortBy,
+      timeRange,
+      categoryId,
+    });
     throw error;
   }
   const postIds = snapshot.docs.map((d) => d.id);
@@ -218,31 +234,41 @@ export const getPostsByUser = async (
   pageSize: number = PAGE_SIZE,
   sortBy: ProfileSortOption = "newest"
 ): Promise<GetPostsByUserResponse> => {
-  const sortDirection = sortBy === "newest" ? "desc" : "asc";
+  try {
+    const sortDirection = sortBy === "newest" ? "desc" : "asc";
 
-  let q = query(
-    collection(db, POSTS_COLLECTION),
-    where("authorId", "==", authorId),
-    orderBy("createdAt", sortDirection),
-    limit(pageSize)
-  );
+    let q = query(
+      collection(db, POSTS_COLLECTION),
+      where("authorId", "==", authorId),
+      orderBy("createdAt", sortDirection),
+      limit(pageSize)
+    );
 
-  if (lastDoc) {
-    q = query(q, startAfter(lastDoc));
+    if (lastDoc) {
+      q = query(q, startAfter(lastDoc));
+    }
+
+    const snapshot = await getDocs(q);
+    const postIds = snapshot.docs.map((d) => d.id);
+
+    const userHuggedIds = await getUserHuggedPostIds(currentUserId);
+    const huggedSet = filterHuggedPosts(postIds, userHuggedIds);
+
+    const posts = snapshot.docs.map((docSnap) =>
+      convertToPost(docSnap, huggedSet.has(docSnap.id))
+    );
+    const newLastDoc = snapshot.docs[snapshot.docs.length - 1] || null;
+
+    return { posts, lastDoc: newLastDoc };
+  } catch (error) {
+    await errorLogger.logError(error, {
+      action: "getPostsByUser",
+      screen: "Profile",
+      authorId,
+      sortBy,
+    });
+    throw error;
   }
-
-  const snapshot = await getDocs(q);
-  const postIds = snapshot.docs.map((d) => d.id);
-
-  const userHuggedIds = await getUserHuggedPostIds(currentUserId);
-  const huggedSet = filterHuggedPosts(postIds, userHuggedIds);
-
-  const posts = snapshot.docs.map((docSnap) =>
-    convertToPost(docSnap, huggedSet.has(docSnap.id))
-  );
-  const newLastDoc = snapshot.docs[snapshot.docs.length - 1] || null;
-
-  return { posts, lastDoc: newLastDoc };
 };
 
 export const toggleHug = async (

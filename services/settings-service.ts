@@ -27,8 +27,7 @@ export async function getNotificationPreferences(
     }
 
     return defaultNotificationPreferences;
-  } catch (error) {
-    console.error("Error getting notification preferences:", error);
+  } catch {
     return defaultNotificationPreferences;
   }
 }
@@ -53,7 +52,6 @@ export async function updateNotificationPreferences(
       notificationPrefs: newPrefs,
     });
   } catch (error) {
-    console.error("Error updating notification preferences:", error);
     throw error;
   }
 }

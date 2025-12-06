@@ -38,8 +38,8 @@ export function ProfilePostsTab({ user, postsData }: ProfilePostsTabProps) {
         isHugged: nowHugged,
         hugsCount: post.hugsCount + (nowHugged ? 1 : -1),
       }));
-    } catch (error) {
-      console.error("Hug error:", error);
+    } catch {
+      // Silently fail
     }
   };
 

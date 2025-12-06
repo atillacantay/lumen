@@ -69,8 +69,8 @@ export default function NotificationSettingsScreen() {
     try {
       const prefs = await getNotificationPreferences(user.id);
       setPreferences(prefs);
-    } catch (error) {
-      console.error("Error loading preferences:", error);
+    } catch {
+      // Silently fail
     } finally {
       setIsLoading(false);
     }
@@ -87,10 +87,9 @@ export default function NotificationSettingsScreen() {
 
     try {
       await updateNotificationPreferences(user.id, { [key]: newValue });
-    } catch (error) {
+    } catch {
       // Revert on error
       setPreferences((prev) => ({ ...prev, [key]: !newValue }));
-      console.error("Error updating preference:", error);
     } finally {
       setUpdating(null);
     }

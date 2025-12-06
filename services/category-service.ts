@@ -1,4 +1,5 @@
 import { db } from "@/config/firebase";
+import { errorLogger } from "@/services/error-logger";
 import { Category } from "@/types";
 import { CacheDuration, getCacheOrFetch, removeCache } from "@/utils/cache";
 import {
@@ -107,9 +108,6 @@ export const getCategories = async (
 
         if (snapshot.empty) {
           // If no categories in Firebase, load defaults and return
-          console.log(
-            "Categories not found in Firebase, loading default categories..."
-          );
           await seedCategories();
           // Return default categories while Firebase is being seeded
           return getDefaultCategoriesWithStyles();
@@ -121,7 +119,9 @@ export const getCategories = async (
       forceRefresh
     );
   } catch (error) {
-    console.error("Error fetching categories:", error);
+    await errorLogger.logError(error, {
+      action: "getCategories",
+    });
     // Return default categories on error
     return getDefaultCategoriesWithStyles();
   }
@@ -139,8 +139,7 @@ export const getCategoryById = async (
       return convertToCategory(docSnap);
     }
     return null;
-  } catch (error) {
-    console.error("Error fetching category:", error);
+  } catch {
     return null;
   }
 };
@@ -158,10 +157,7 @@ export const seedCategories = async (): Promise<void> => {
         createdAt: new Date(),
       });
     }
-
-    console.log("Default categories loaded successfully!");
   } catch (error) {
-    console.error("Category seed error:", error);
     throw error;
   }
 };
@@ -170,7 +166,7 @@ export const seedCategories = async (): Promise<void> => {
 export const clearCategoriesCache = async (): Promise<void> => {
   try {
     await removeCache(CATEGORIES_CACHE_KEY);
-  } catch (error) {
-    console.error("Cache clearing error:", error);
+  } catch {
+    // Silently fail
   }
 };

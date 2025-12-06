@@ -50,8 +50,8 @@ export function ProfileCommentsTab({
         isHugged: nowHugged,
         hugsCount: comment.hugsCount + (nowHugged ? 1 : -1),
       }));
-    } catch (error) {
-      console.error("Comment hug error:", error);
+    } catch {
+      // Silently fail
     }
   };
 

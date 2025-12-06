@@ -50,8 +50,7 @@ export default function CommentScreen() {
           },
         },
       ]);
-    } catch (error) {
-      console.error("Failed to send comment:", error);
+    } catch {
       Alert.alert("Hata", "Yorum gönderilemedi. Tekrar dene.");
     } finally {
       setIsSubmitting(false);

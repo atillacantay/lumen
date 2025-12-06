@@ -60,8 +60,8 @@ export default function PostDetailScreen() {
 
         setPost(fetchedPost);
         setComments(fetchedComments);
-      } catch (error) {
-        console.error("Failed to load data:", error);
+      } catch {
+        // Silently fail
       } finally {
         setIsLoading(false);
       }
@@ -84,8 +84,8 @@ export default function PostDetailScreen() {
             }
           : null
       );
-    } catch (error) {
-      console.error("Failed to toggle hug:", error);
+    } catch {
+      // Silently fail
     }
   };
 
@@ -110,8 +110,8 @@ export default function PostDetailScreen() {
             : c
         )
       );
-    } catch (error) {
-      console.error("Failed to toggle comment hug:", error);
+    } catch {
+      // Silently fail
     }
   };
 
@@ -127,8 +127,8 @@ export default function PostDetailScreen() {
 
       setPost(fetchedPost);
       setComments(fetchedComments);
-    } catch (error) {
-      console.error("Failed to refresh:", error);
+    } catch {
+      // Silently fail
     } finally {
       setRefreshing(false);
     }
@@ -139,8 +139,8 @@ export default function PostDetailScreen() {
     try {
       const sortedComments = await getCommentsByPost(id, newSort, user?.id);
       setComments(sortedComments);
-    } catch (error) {
-      console.error("Yorumlar yüklenemedi:", error);
+    } catch {
+      // Silently fail
     }
   };
 

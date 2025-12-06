@@ -1,4 +1,5 @@
 import { db } from "@/config/firebase";
+import { errorLogger } from "@/services/error-logger";
 import {
   notifyCommentHug,
   notifyPostComment,
@@ -79,55 +80,67 @@ const filterHuggedComments = (
 export const createComment = async (
   input: CreateCommentInput
 ): Promise<Comment> => {
-  // Sanitize input to prevent XSS and invalid data
-  const sanitized = sanitizeCommentInput({
-    content: input.content,
-    authorName: input.authorName,
-  });
+  try {
+    // Sanitize input to prevent XSS and invalid data
+    const sanitized = sanitizeCommentInput({
+      content: input.content,
+      authorName: input.authorName,
+    });
 
-  if (!sanitized) {
-    throw new Error("Invalid comment data");
-  }
+    if (!sanitized) {
+      throw new Error("Invalid comment data");
+    }
 
-  const now = Timestamp.now();
+    const now = Timestamp.now();
 
-  const commentData = {
-    postId: input.postId,
-    content: sanitized.content,
-    authorId: input.authorId,
-    authorName: sanitized.authorName,
-    hugsCount: 0,
-    createdAt: now,
-  };
+    const commentData = {
+      postId: input.postId,
+      content: sanitized.content,
+      authorId: input.authorId,
+      authorName: sanitized.authorName,
+      hugsCount: 0,
+      createdAt: now,
+    };
 
-  const docRef = await addDoc(collection(db, COMMENTS_COLLECTION), commentData);
-
-  // Increment the post's comment count
-  const postRef = doc(db, POSTS_COLLECTION, input.postId);
-  await updateDoc(postRef, { commentsCount: increment(1) });
-
-  // Send push notification to post author
-  const postSnap = await getDoc(postRef);
-  if (postSnap.exists()) {
-    const postData = postSnap.data();
-    notifyPostComment(
-      postData.authorId,
-      input.authorId,
-      sanitized.authorName,
-      input.postId
+    const docRef = await addDoc(
+      collection(db, COMMENTS_COLLECTION),
+      commentData
     );
-  }
 
-  return {
-    id: docRef.id,
-    postId: input.postId,
-    content: sanitized.content,
-    authorId: input.authorId,
-    authorName: sanitized.authorName,
-    hugsCount: 0,
-    isHugged: false,
-    createdAt: now.toDate(),
-  };
+    // Increment the post's comment count
+    const postRef = doc(db, POSTS_COLLECTION, input.postId);
+    await updateDoc(postRef, { commentsCount: increment(1) });
+
+    // Send push notification to post author
+    const postSnap = await getDoc(postRef);
+    if (postSnap.exists()) {
+      const postData = postSnap.data();
+      notifyPostComment(
+        postData.authorId,
+        input.authorId,
+        sanitized.authorName,
+        input.postId
+      );
+    }
+
+    return {
+      id: docRef.id,
+      postId: input.postId,
+      content: sanitized.content,
+      authorId: input.authorId,
+      authorName: sanitized.authorName,
+      hugsCount: 0,
+      isHugged: false,
+      createdAt: now.toDate(),
+    };
+  } catch (error) {
+    await errorLogger.logError(error, {
+      action: "createComment",
+      screen: "PostDetail",
+      postId: input.postId,
+    });
+    throw error;
+  }
 };
 
 export type CommentSortOption = "oldest" | "newest" | "popular";
@@ -146,23 +159,33 @@ export const getCommentsByPost = async (
   sortBy: CommentSortOption = "oldest",
   userId?: string
 ): Promise<Comment[]> => {
-  const { field, direction } = COMMENT_SORT_CONFIG[sortBy];
+  try {
+    const { field, direction } = COMMENT_SORT_CONFIG[sortBy];
 
-  const q = query(
-    collection(db, COMMENTS_COLLECTION),
-    where("postId", "==", postId),
-    orderBy(field, direction)
-  );
+    const q = query(
+      collection(db, COMMENTS_COLLECTION),
+      where("postId", "==", postId),
+      orderBy(field, direction)
+    );
 
-  const snapshot = await getDocs(q);
-  const commentIds = snapshot.docs.map((d) => d.id);
+    const snapshot = await getDocs(q);
+    const commentIds = snapshot.docs.map((d) => d.id);
 
-  const userHuggedIds = await getUserHuggedCommentIds(userId);
-  const huggedSet = filterHuggedComments(commentIds, userHuggedIds);
+    const userHuggedIds = await getUserHuggedCommentIds(userId);
+    const huggedSet = filterHuggedComments(commentIds, userHuggedIds);
 
-  return snapshot.docs.map((docSnap) =>
-    convertToComment(docSnap, huggedSet.has(docSnap.id))
-  );
+    return snapshot.docs.map((docSnap) =>
+      convertToComment(docSnap, huggedSet.has(docSnap.id))
+    );
+  } catch (error) {
+    await errorLogger.logError(error, {
+      action: "getCommentsByPost",
+      screen: "PostDetail",
+      postId,
+      sortBy,
+    });
+    throw error;
+  }
 };
 
 export interface GetCommentsByUserResponse {
@@ -213,38 +236,48 @@ export const toggleCommentHug = async (
   userId: string,
   userName: string
 ): Promise<boolean> => {
-  const hugId = `${userId}_${commentId}`;
-  const hugRef = doc(db, COMMENT_HUGS_COLLECTION, hugId);
-  const hugSnap = await getDoc(hugRef);
-  const commentRef = doc(db, COMMENTS_COLLECTION, commentId);
+  try {
+    const hugId = `${userId}_${commentId}`;
+    const hugRef = doc(db, COMMENT_HUGS_COLLECTION, hugId);
+    const hugSnap = await getDoc(hugRef);
+    const commentRef = doc(db, COMMENTS_COLLECTION, commentId);
 
-  if (hugSnap.exists()) {
-    await deleteDoc(hugRef);
-    await updateDoc(commentRef, { hugsCount: increment(-1) });
-    return false;
-  } else {
-    await setDoc(hugRef, {
-      targetId: commentId,
-      targetType: "comment",
-      userId,
-      createdAt: Timestamp.now(),
-    });
-    await updateDoc(commentRef, { hugsCount: increment(1) });
-
-    // Send push notification to comment author
-    const commentSnap = await getDoc(commentRef);
-    if (commentSnap.exists()) {
-      const commentData = commentSnap.data();
-      notifyCommentHug(
-        commentData.authorId,
+    if (hugSnap.exists()) {
+      await deleteDoc(hugRef);
+      await updateDoc(commentRef, { hugsCount: increment(-1) });
+      return false;
+    } else {
+      await setDoc(hugRef, {
+        targetId: commentId,
+        targetType: "comment",
         userId,
-        userName,
-        commentData.postId,
-        commentId
-      );
-    }
+        createdAt: Timestamp.now(),
+      });
+      await updateDoc(commentRef, { hugsCount: increment(1) });
 
-    return true;
+      // Send push notification to comment author
+      const commentSnap = await getDoc(commentRef);
+      if (commentSnap.exists()) {
+        const commentData = commentSnap.data();
+        notifyCommentHug(
+          commentData.authorId,
+          userId,
+          userName,
+          commentData.postId,
+          commentId
+        );
+      }
+
+      return true;
+    }
+  } catch (error) {
+    await errorLogger.logError(error, {
+      action: "toggleCommentHug",
+      screen: "PostDetail",
+      commentId,
+      userId,
+    });
+    throw error;
   }
 };
 

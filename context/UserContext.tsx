@@ -43,8 +43,8 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
       if (token) {
         await savePushToken(currentUser.id, token);
       }
-    } catch (error) {
-      console.error("Failed to create user:", error);
+    } catch {
+      // Silently fail
     } finally {
       setIsLoading(false);
     }

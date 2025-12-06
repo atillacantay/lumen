@@ -81,8 +81,7 @@ export default function CreatePostScreen() {
       Alert.alert("Başarılı", "Derdini paylaştın! 🤗", [
         { text: "Tamam", onPress: () => router.back() },
       ]);
-    } catch (error) {
-      console.error("Post oluşturulamadı:", error);
+    } catch {
       Alert.alert("Hata", "Bir şeyler yanlış gitti. Tekrar dene.");
     } finally {
       setLoading(false);

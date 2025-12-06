@@ -59,8 +59,7 @@ export const getCache = async <T>(key: string): Promise<T | null> => {
     }
 
     return entry.data;
-  } catch (error) {
-    console.error(`Cache get error for key "${key}":`, error);
+  } catch {
     return null;
   }
 };
@@ -85,8 +84,8 @@ export const setCache = async <T>(
     };
 
     await AsyncStorage.setItem(cacheKey, JSON.stringify(entry));
-  } catch (error) {
-    console.error(`Cache set error for key "${key}":`, error);
+  } catch {
+    // Silently fail
   }
 };
 
@@ -98,8 +97,8 @@ export const removeCache = async (key: string): Promise<void> => {
   try {
     const cacheKey = getCacheKey(key);
     await AsyncStorage.removeItem(cacheKey);
-  } catch (error) {
-    console.error(`Cache remove error for key "${key}":`, error);
+  } catch {
+    // Silently fail
   }
 };
 
@@ -111,8 +110,8 @@ export const clearAllCache = async (): Promise<void> => {
     const allKeys = await AsyncStorage.getAllKeys();
     const cacheKeys = allKeys.filter((key) => key.startsWith(CACHE_PREFIX));
     await AsyncStorage.multiRemove(cacheKeys);
-  } catch (error) {
-    console.error("Cache clear all error:", error);
+  } catch {
+    // Silently fail
   }
 };
 
@@ -162,8 +161,7 @@ export const getCacheEntry = async <T>(
     }
 
     return JSON.parse(cached);
-  } catch (error) {
-    console.error(`Cache entry get error for key "${key}":`, error);
+  } catch {
     return null;
   }
 };

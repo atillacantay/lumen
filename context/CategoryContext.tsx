@@ -44,8 +44,7 @@ export const CategoryProvider: React.FC<CategoryProviderProps> = ({
       setError(null);
       const fetchedCategories = await getCategories(forceRefresh);
       setCategories(fetchedCategories);
-    } catch (err) {
-      console.error("Failed to load categories:", err);
+    } catch {
       setError("An error occurred while loading categories");
     } finally {
       setIsLoading(false);
