@@ -1,6 +1,7 @@
 import { trackCategoryFiltered } from "@/services/analytics-service";
 import { Category } from "@/types";
 import { Ionicons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
 import React from "react";
 import {
   FlatList,
@@ -12,11 +13,12 @@ import {
 
 interface Props {
   categories: Category[];
-  onSelect: (categoryId: string) => void;
   colors: any;
 }
 
-export default function CategoryList({ categories, onSelect, colors }: Props) {
+export default function CategoryList({ categories, colors }: Props) {
+  const router = useRouter();
+
   return (
     <FlatList
       data={categories}
@@ -26,11 +28,11 @@ export default function CategoryList({ categories, onSelect, colors }: Props) {
         <TouchableOpacity
           style={[styles.item, { backgroundColor: colors.surface }]}
           onPress={() => {
-            onSelect(item.id);
             trackCategoryFiltered({
               categoryId: item.id,
               categoryName: item.name,
             });
+            router.push(`/category/${item.id}`);
           }}
           activeOpacity={0.7}
         >

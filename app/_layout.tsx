@@ -59,6 +59,12 @@ export default function RootLayout() {
                   }}
                 />
                 <Stack.Screen
+                  name="category/[id]"
+                  options={{
+                    headerShown: false,
+                  }}
+                />
+                <Stack.Screen
                   name="post/[id]"
                   options={{
                     headerShown: false,
