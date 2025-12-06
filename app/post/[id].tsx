@@ -13,17 +13,15 @@ import { useUser } from "@/context/UserContext";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import {
   CommentSortOption,
-  createComment,
   getCommentsByPost,
   toggleCommentHug,
 } from "@/services/comment-service";
 import { getPostById, toggleHug } from "@/services/post-service";
 import { Comment, Post } from "@/types";
 import BottomSheet from "@gorhom/bottom-sheet";
-import { useLocalSearchParams } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
 import {
-  Alert,
   KeyboardAvoidingView,
   Platform,
   RefreshControl,
@@ -35,6 +33,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function PostDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
+  const router = useRouter();
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? "light"];
   const { user } = useUser();
@@ -45,8 +44,6 @@ export default function PostDetailScreen() {
   const [post, setPost] = useState<Post | null>(null);
   const [comments, setComments] = useState<Comment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [newComment, setNewComment] = useState("");
-  const [submitting, setSubmitting] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [commentSortBy, setCommentSortBy] =
     useState<CommentSortOption>("oldest");
@@ -115,29 +112,6 @@ export default function PostDetailScreen() {
       );
     } catch (error) {
       console.error("Failed to toggle comment hug:", error);
-    }
-  };
-
-  const handleSubmitComment = async () => {
-    if (!newComment.trim() || !user || !post) return;
-
-    setSubmitting(true);
-    try {
-      const comment = await createComment({
-        postId: post.id,
-        content: newComment.trim(),
-        authorId: user.id,
-        authorName: user.anonymousName,
-      });
-      setComments((prev) => [...prev, comment]);
-      setPost((prev) =>
-        prev ? { ...prev, commentsCount: prev.commentsCount + 1 } : null
-      );
-      setNewComment("");
-    } catch {
-      Alert.alert("Hata", "Yorum gönderilemedi.");
-    } finally {
-      setSubmitting(false);
     }
   };
 
@@ -236,11 +210,17 @@ export default function PostDetailScreen() {
 
         {/* Comment Input */}
         <CommentInput
-          value={newComment}
-          onChangeText={setNewComment}
-          onSubmit={handleSubmitComment}
-          isSubmitting={submitting}
+          value=""
+          onChangeText={() => {}}
+          onSubmit={() => {}}
+          onFocus={() => {
+            if (id) {
+              router.push(`/post/${id}/comment`);
+            }
+          }}
+          isSubmitting={false}
           bottomInset={insets.bottom}
+          editable={false}
         />
 
         {/* Comment Sort Sheet */}
@@ -263,6 +243,5 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: Spacing.md,
-    paddingBottom: 100,
   },
 });
