@@ -1,6 +1,7 @@
 import { db } from "@/config/firebase";
 import { notifyPostHug } from "@/services/notification-service";
 import { Post, TimeRange } from "@/types";
+import { sanitizePostInput } from "@/utils/sanitize";
 import { getTimeRangeThreshold } from "@/utils/time-range";
 import {
   addDoc,
@@ -80,15 +81,28 @@ const convertToPost = (docSnap: DocumentSnapshot, isHugged = false): Post => {
 };
 
 export const createPost = async (input: CreatePostInput): Promise<Post> => {
-  const now = Timestamp.now();
-
-  const postData = {
+  // Sanitize input to prevent XSS and invalid data
+  const sanitized = sanitizePostInput({
     title: input.title,
     content: input.content,
     categoryId: input.categoryId,
-    authorId: input.authorId,
     authorName: input.authorName,
-    imageUrl: input.imageUrl ?? null,
+    imageUrl: input.imageUrl,
+  });
+
+  if (!sanitized) {
+    throw new Error("Invalid post data");
+  }
+
+  const now = Timestamp.now();
+
+  const postData = {
+    title: sanitized.title,
+    content: sanitized.content,
+    categoryId: sanitized.categoryId,
+    authorId: input.authorId,
+    authorName: sanitized.authorName,
+    imageUrl: sanitized.imageUrl ?? null,
     hugsCount: 0,
     commentsCount: 0,
     createdAt: now,
@@ -99,10 +113,15 @@ export const createPost = async (input: CreatePostInput): Promise<Post> => {
 
   return {
     id: docRef.id,
-    ...input,
-    imageUrl: input.imageUrl,
+    title: sanitized.title,
+    content: sanitized.content,
+    categoryId: sanitized.categoryId,
+    authorId: input.authorId,
+    authorName: sanitized.authorName,
+    imageUrl: sanitized.imageUrl,
     hugsCount: 0,
     commentsCount: 0,
+    isHugged: false,
     createdAt: now.toDate(),
     updatedAt: now.toDate(),
   };

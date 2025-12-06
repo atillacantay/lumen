@@ -4,6 +4,7 @@ import {
   notifyPostComment,
 } from "@/services/notification-service";
 import { Comment } from "@/types";
+import { sanitizeCommentInput } from "@/utils/sanitize";
 import {
   addDoc,
   collection,
@@ -78,13 +79,23 @@ const filterHuggedComments = (
 export const createComment = async (
   input: CreateCommentInput
 ): Promise<Comment> => {
+  // Sanitize input to prevent XSS and invalid data
+  const sanitized = sanitizeCommentInput({
+    content: input.content,
+    authorName: input.authorName,
+  });
+
+  if (!sanitized) {
+    throw new Error("Invalid comment data");
+  }
+
   const now = Timestamp.now();
 
   const commentData = {
     postId: input.postId,
-    content: input.content,
+    content: sanitized.content,
     authorId: input.authorId,
-    authorName: input.authorName,
+    authorName: sanitized.authorName,
     hugsCount: 0,
     createdAt: now,
   };
@@ -102,15 +113,19 @@ export const createComment = async (
     notifyPostComment(
       postData.authorId,
       input.authorId,
-      input.authorName,
+      sanitized.authorName,
       input.postId
     );
   }
 
   return {
     id: docRef.id,
-    ...input,
+    postId: input.postId,
+    content: sanitized.content,
+    authorId: input.authorId,
+    authorName: sanitized.authorName,
     hugsCount: 0,
+    isHugged: false,
     createdAt: now.toDate(),
   };
 };
