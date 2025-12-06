@@ -2,6 +2,7 @@ import { db } from "@/config/firebase";
 import { NewUser, User } from "@/types";
 import { CacheDuration, getCache, removeCache, setCache } from "@/utils/cache";
 import { addDoc, collection } from "firebase/firestore";
+import { identifyDevice } from "vexo-analytics";
 
 const USER_CACHE_KEY = "user";
 
@@ -83,9 +84,15 @@ export const createUser = async (): Promise<User> => {
 export const getOrCreateUser = async (): Promise<User> => {
   const existingUser = await getCurrentUser();
   if (existingUser) {
+    // Mevcut kullanıcıyı analytics'e tanıt
+    identifyDevice(existingUser.id).catch(() => {});
     return existingUser;
   }
-  return createUser();
+
+  const newUser = await createUser();
+  // Yeni kullanıcıyı analytics'e tanıt
+  identifyDevice(newUser.id).catch(() => {});
+  return newUser;
 };
 
 // Clear user data (for logout)

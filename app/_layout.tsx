@@ -3,7 +3,10 @@ import { CategoryProvider } from "@/context/CategoryContext";
 import { NotificationProvider } from "@/context/NotificationContext";
 import { UserProvider } from "@/context/UserContext";
 import { useColorScheme } from "@/hooks/use-color-scheme";
-import { trackAppOpened } from "@/services/analytics-service";
+import {
+  trackAppOpened,
+  trackSessionStart,
+} from "@/services/analytics-service";
 import {
   DarkTheme,
   DefaultTheme,
@@ -22,7 +25,7 @@ if (__DEV__) {
   NativeModules.DevSettings?.setIsDebuggingRemotely?.(true);
 }
 
-if (!__DEV__) {
+if (APP_CONFIG.vexoEnable) {
   vexo(APP_CONFIG.vexoApiKey || "");
 }
 
@@ -34,6 +37,7 @@ export default function RootLayout() {
   const colorScheme = useColorScheme();
 
   useEffect(() => {
+    trackSessionStart();
     trackAppOpened();
   }, []);
 

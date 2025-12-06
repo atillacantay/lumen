@@ -8,6 +8,7 @@ import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useInfiniteList } from "@/hooks/use-infinite-list";
 import {
   trackPostHugged,
+  trackPullToRefresh,
   trackSortChanged,
 } from "@/services/analytics-service";
 import { getPosts, SortOption, toggleHug } from "@/services/post-service";
@@ -246,7 +247,10 @@ export default function HomeScreen() {
         refreshControl={
           <RefreshControl
             refreshing={isRefreshing}
-            onRefresh={refresh}
+            onRefresh={() => {
+              trackPullToRefresh("home_feed");
+              refresh();
+            }}
             tintColor={colors.primary}
           />
         }

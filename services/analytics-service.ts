@@ -1,7 +1,18 @@
+import { APP_CONFIG } from "@/config";
 import { customEvent } from "vexo-analytics";
 
 const logAnalyticsEvent = (eventName: string, params?: Record<string, any>) => {
-  customEvent(eventName, params || {});
+  if (!APP_CONFIG.vexoEnable) {
+    return;
+  }
+
+  try {
+    customEvent(eventName, params || {});
+  } catch {
+    if (__DEV__) {
+      console.warn(`Failed to log analytics event: ${eventName}`);
+    }
+  }
 };
 
 // Track screen/page views
@@ -68,19 +79,6 @@ export const trackPostHugged = (params: {
   });
 };
 
-// Track post shared
-export const trackPostShared = (params: {
-  postId: string;
-  category: string;
-  platform?: string;
-}) => {
-  logAnalyticsEvent("post_shared", {
-    post_id: params.postId,
-    category: params.category,
-    platform: params.platform || "unknown",
-  });
-};
-
 // Track comment created
 export const trackCommentCreated = (params: {
   commentId: string;
@@ -109,12 +107,10 @@ export const trackCommentHugged = (params: {
 export const trackCategoryFiltered = (params: {
   categoryId: string;
   categoryName: string;
-  postsCount?: number;
 }) => {
   logAnalyticsEvent("category_filtered", {
     category_id: params.categoryId,
     category_name: params.categoryName,
-    posts_count: params.postsCount || 0,
   });
 };
 
@@ -141,21 +137,6 @@ export const trackSearchPerformed = (params: {
     query: params.query,
     results_count: params.resultsCount,
     category: params.category || "all",
-  });
-};
-
-// Track search result clicked
-export const trackSearchResultClicked = (params: {
-  query: string;
-  position: number;
-  postId: string;
-  category: string;
-}) => {
-  logAnalyticsEvent("search_result_clicked", {
-    query: params.query,
-    position: params.position,
-    post_id: params.postId,
-    category: params.category,
   });
 };
 

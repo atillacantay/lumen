@@ -5,6 +5,7 @@ import {
   serverTimestamp,
   Timestamp,
 } from "firebase/firestore";
+import { trackAnalyticsError } from "./analytics-service";
 
 interface ErrorContext {
   userId?: string;
@@ -35,6 +36,13 @@ export const errorLogger = {
       type: "error",
       userAgent: "react-native",
     };
+
+    // Analytics'e de gönder
+    trackAnalyticsError({
+      errorName: error instanceof Error ? error.name : "UnknownError",
+      errorMessage: errorMessage,
+      screen: context?.screen || "unknown",
+    });
 
     try {
       // Firebase'e error'u kaydet

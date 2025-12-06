@@ -6,6 +6,10 @@ import { useCategories } from "@/context/CategoryContext";
 import { useUser } from "@/context/UserContext";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useInfiniteList } from "@/hooks/use-infinite-list";
+import {
+  trackCategoryFiltered,
+  trackPullToRefresh,
+} from "@/services/analytics-service";
 import { getPosts, toggleHug } from "@/services/post-service";
 import { Post } from "@/types";
 import { Ionicons } from "@expo/vector-icons";
@@ -136,7 +140,13 @@ export default function ExploreScreen() {
           renderItem={({ item }) => (
             <TouchableOpacity
               style={[styles.categoryItem, { backgroundColor: colors.surface }]}
-              onPress={() => setSelectedCategory(item.id)}
+              onPress={() => {
+                setSelectedCategory(item.id);
+                trackCategoryFiltered({
+                  categoryId: item.id,
+                  categoryName: item.name,
+                });
+              }}
               activeOpacity={0.7}
             >
               <View
@@ -216,7 +226,10 @@ export default function ExploreScreen() {
         refreshControl={
           <RefreshControl
             refreshing={isRefreshing}
-            onRefresh={refresh}
+            onRefresh={() => {
+              trackPullToRefresh("explore");
+              refresh();
+            }}
             tintColor={selectedCategoryData?.color || colors.primary}
           />
         }
