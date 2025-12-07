@@ -36,9 +36,9 @@ export function sanitizeText(text: string, maxLength: number = 5000): string {
 export function sanitizeAuthorName(name: string): string {
   if (!name || typeof name !== "string") return "Anonymous";
 
-  // Remove special characters, keep only alphanumeric, spaces, hyphens, underscores
+  // Remove special characters, keep alphanumeric, spaces, hyphens, underscores, and Turkish characters
   let sanitized = name
-    .replace(/[^a-zA-Z0-9\s\-_]/g, "")
+    .replace(/[^a-zA-Z0-9\s\-_çğıöşüÇĞİÖŞÜ]/g, "")
     .trim()
     .substring(0, 50);
 
