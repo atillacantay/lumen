@@ -72,28 +72,4 @@ export const errorLogger = {
       }
     }
   },
-
-  setUserId: (userId: string) => {
-    // Store user ID in context for subsequent logs
-    if (typeof window !== "undefined") {
-      (window as any).__errorLoggerUserId = userId;
-    }
-  },
-
-  setCustomKey: (key: string, value: string | number | boolean) => {
-    // Store custom keys
-    if (typeof window !== "undefined") {
-      (window as any).__errorLoggerContext = {
-        ...(window as any).__errorLoggerContext,
-        [key]: value,
-      };
-    }
-  },
-
-  clearContext: () => {
-    if (typeof window !== "undefined") {
-      (window as any).__errorLoggerUserId = null;
-      (window as any).__errorLoggerContext = {};
-    }
-  },
 };
