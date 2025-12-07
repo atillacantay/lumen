@@ -1,3 +1,4 @@
+import { AdBanner } from "@/components/AdBanner";
 import { FeedOptionsSheet } from "@/components/FeedOptionsSheet";
 import HomeEmptyState from "@/components/HomeEmptyState";
 import HomeFilters from "@/components/HomeFilters";
@@ -195,6 +196,9 @@ export default function HomeScreen() {
           <HomeEmptyState onCreate={() => router.push("/create-post")} />
         )}
       />
+
+      {/* Ad Banner */}
+      <AdBanner />
 
       {/* Feed Options Bottom Sheet */}
       <FeedOptionsSheet

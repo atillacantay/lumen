@@ -1,3 +1,4 @@
+import { AdBanner } from "@/components/AdBanner";
 import { CommentList } from "@/components/CommentList";
 import { CommentSortSheet } from "@/components/CommentSortSheet";
 import {
@@ -223,6 +224,9 @@ export default function PostDetailScreen() {
             onCommentsChange={setComments}
             onOpenSortSheet={() => sortSheetRef.current?.expand()}
           />
+
+          {/* Ad Banner */}
+          <AdBanner />
         </ScrollView>
 
         {/* Comment Input */}
@@ -255,5 +259,9 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: Spacing.md,
+  },
+  adBanner: {
+    marginTop: Spacing.md,
+    marginBottom: Spacing.xl,
   },
 });

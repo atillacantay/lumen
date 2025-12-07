@@ -3,6 +3,7 @@ import { CategoryProvider } from "@/context/CategoryContext";
 import { NotificationProvider } from "@/context/NotificationContext";
 import { UserProvider } from "@/context/UserContext";
 import { useColorScheme } from "@/hooks/use-color-scheme";
+import { getAppOpenAdUnitId, showAppOpenAd } from "@/services/admob-service";
 import {
   trackAppOpened,
   trackSessionStart,
@@ -39,6 +40,7 @@ export default function RootLayout() {
   useEffect(() => {
     trackSessionStart();
     trackAppOpened();
+    showAppOpenAd(getAppOpenAdUnitId());
   }, []);
 
   return (

@@ -41,7 +41,14 @@
         }
       ],
       "expo-secure-store",
-      "expo-web-browser"
+      "expo-web-browser",
+      [
+        "react-native-google-mobile-ads",
+        {
+          "androidAppId": "ca-app-pub-3530383341179712~1775230609",
+          "iosAppId": "ca-app-pub-3530383341179712~1573433510"
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,
