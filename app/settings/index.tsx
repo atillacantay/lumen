@@ -126,7 +126,7 @@ export default function SettingsScreen() {
 
         {/* App Version */}
         <Text style={[styles.version, { color: colors.textMuted }]}>
-          Lumen v{APP_CONFIG.version}
+          {APP_CONFIG.name} v{APP_CONFIG.version}
         </Text>
       </ScrollView>
     </View>

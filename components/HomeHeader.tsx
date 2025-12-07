@@ -1,3 +1,4 @@
+import { APP_CONFIG } from "@/config";
 import { BorderRadius, Colors, FontSize, Spacing } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { Ionicons } from "@expo/vector-icons";
@@ -15,7 +16,9 @@ export default function HomeHeader({ onCreatePress }: Props) {
   return (
     <View style={[styles.header, { backgroundColor: colors.surface }]}>
       <View>
-        <Text style={[styles.logo, { color: colors.primary }]}>Lumen</Text>
+        <Text style={[styles.logo, { color: colors.primary }]}>
+          {APP_CONFIG.name}
+        </Text>
         <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
           Dertleş, Rahatla 🌙
         </Text>

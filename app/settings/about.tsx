@@ -55,7 +55,9 @@ export default function AboutScreen() {
           >
             <Text style={styles.appIconText}>🌙</Text>
           </View>
-          <Text style={[styles.appName, { color: colors.text }]}>Lumen</Text>
+          <Text style={[styles.appName, { color: colors.text }]}>
+            {APP_CONFIG.name}
+          </Text>
           <Text style={[styles.appVersion, { color: colors.textSecondary }]}>
             Versiyon {APP_CONFIG.version}
           </Text>
@@ -70,9 +72,9 @@ export default function AboutScreen() {
             Uygulama Hakkında
           </Text>
           <Text style={[styles.description, { color: colors.textSecondary }]}>
-            Lumen, anonim olarak duygularını ve düşüncelerini paylaşabileceğin
-            güvenli bir alan. Burada kimliğin gizli kalır, sadece sözlerin
-            konuşur.
+            {APP_CONFIG.name}, anonim olarak duygularını ve düşüncelerini
+            paylaşabileceğin güvenli bir alan. Burada kimliğin gizli kalır,
+            sadece sözlerin konuşur.
           </Text>
         </View>
 

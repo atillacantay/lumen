@@ -1,6 +1,7 @@
 // App Configuration
 export const APP_CONFIG = {
   version: process.env.EXPO_PUBLIC_APP_VERSION,
+  name: process.env.EXPO_PUBLIC_APP_NAME || "Dert Ortağım",
   vexoApiKey: process.env.EXPO_PUBLIC_VEXO_API_KEY,
   vexoEnable: process.env.EXPO_PUBLIC_VEXO_ENABLED === "true",
 };
@@ -15,4 +16,5 @@ export const API_CONFIG = {
 export const CLOUDINARY_CONFIG = {
   cloudName: process.env.EXPO_PUBLIC_CLOUDINARY_CLOUD_NAME || "",
   uploadPreset: process.env.EXPO_PUBLIC_CLOUDINARY_UPLOAD_PRESET || "",
+  folderName: "lumen",
 };

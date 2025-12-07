@@ -1,4 +1,4 @@
-# 🌙 Lumen - Anonymous Venting Platform
+# 🌙 Dert Ortağım - Anonymous Venting Platform
 
 A mobile application where people can anonymously share their troubles and support each other through difficult times.
 
