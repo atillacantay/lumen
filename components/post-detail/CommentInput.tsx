@@ -1,6 +1,12 @@
 import { BorderRadius, Colors, FontSize, Spacing } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
-import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import {
+  Platform,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
 
 interface CommentInputProps {
   onPress?: () => void;
@@ -17,7 +23,8 @@ export function CommentInput({ onPress, bottomInset = 0 }: CommentInputProps) {
         styles.container,
         {
           backgroundColor: colors.surface,
-          paddingBottom: bottomInset,
+          paddingBottom:
+            Platform.OS === "android" ? bottomInset + Spacing.md : bottomInset,
         },
       ]}
     >
