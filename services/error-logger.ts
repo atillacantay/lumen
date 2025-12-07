@@ -37,7 +37,7 @@ export const errorLogger = {
       userAgent: "react-native",
     };
 
-    // Analytics'e de gönder
+    // Send to analytics as well
     trackAnalyticsError({
       errorName: error instanceof Error ? error.name : "UnknownError",
       errorMessage: errorMessage,
@@ -45,11 +45,13 @@ export const errorLogger = {
     });
 
     try {
-      // Firebase'e error'u kaydet
+      // Save error to Firebase
       await addDoc(collection(db, "error_logs"), errorLog);
     } catch (logError) {
-      // Logging başarısızsa bile uygulamayı kıracak hale getirme
-      console.error("Error logging failed:", logError);
+      // Don't crash the app if logging fails
+      if (__DEV__) {
+        console.error("Error logging failed:", logError);
+      }
     }
   },
 
@@ -65,19 +67,21 @@ export const errorLogger = {
     try {
       await addDoc(collection(db, "error_logs"), warningLog);
     } catch (logError) {
-      console.error("Warning logging failed:", logError);
+      if (__DEV__) {
+        console.error("Warning logging failed:", logError);
+      }
     }
   },
 
   setUserId: (userId: string) => {
-    // User ID'yi context'e ekle sonraki loglar için
+    // Store user ID in context for subsequent logs
     if (typeof window !== "undefined") {
       (window as any).__errorLoggerUserId = userId;
     }
   },
 
   setCustomKey: (key: string, value: string | number | boolean) => {
-    // Custom key'leri sakla
+    // Store custom keys
     if (typeof window !== "undefined") {
       (window as any).__errorLoggerContext = {
         ...(window as any).__errorLoggerContext,
